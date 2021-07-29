@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "devourer"
+version = "0.1.0"
+description = ""
+authors = ["terminaldweller <thabogre@gmail.com>"]
+license = "GPL3.0"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+newspaper3k = "^0.2.8"
+beautifulsoup4 = "^4.9.3"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -3,24 +3,75 @@
 
 import argparse
 import logging
-import traceback
 from newspaper import Article, build
-import fileinput
+from bs4 import BeautifulSoup
+from contextlib import closing
+from requests import get
+from requests.exceptions import RequestException
+from re import findall
 
 
 class Argparser(object):
     def __init__(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--string", type=str, help="string")
+        parser.add_argument(
+            "--source",
+            type=str, help="the url where the urls to be extracted reside")
         parser.add_argument("--bool", action="store_true",
                             help="bool", default=False)
-        parser.add_argument("--dbg", action="store_true",
-                            help="debug", default=False)
         self.args = parser.parse_args()
 
 
+# TODO-maybe actually really do some logging
+def logError(err):
+    print(err)
+
+
+def isAGoodResponse(resp):
+    content_type = resp.headers['Content-Type'].lower()
+    return (resp.status_code == 200 and
+            content_type is not None and content_type.find("html") > -1)
+
+
+def simpleGet(url):
+    try:
+        with closing(get(url, stream=True)) as resp:
+            if isAGoodResponse(resp):
+                return resp.content
+            else:
+                return None
+    except RequestException as e:
+        logError("Error during requests to {0} : {1}".format(url, str(e)))
+        return None
+
+
+def getURLS(source):
+    result = dict()
+    raw_ml = simpleGet(source)
+    ml = BeautifulSoup(raw_ml, "lxml")
+    ml_str = repr(ml)
+    tmp = open("/tmp/riecher", "w")
+    tmp.write(ml_str)
+    tmp.close()
+    tmp = open("/tmp/riecher", "r")
+    dump_list = []
+    for line in tmp:
+        dummy = findall(
+            'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|'
+            r'(?:%[0-9a-fA-F][0-9a-fA-F]))+', line)
+        dump_list += dummy
+    for elem in dump_list:
+        result[elem] = elem
+    tmp.close()
+    return result
+
+
 def main():
-    urls = (line for line in fileinput.input())
+    argparser = Argparser()
+    urls = getURLS(argparser.args.source)
+    # import sys
+    # print(urls)
+    # sys.exit(0)
     for url in urls:
         parser = build(url)
         for article in parser.articles:
@@ -30,7 +81,7 @@ def main():
                 a.parse()
                 print(a.text)
             except Exception as e:
-                logging.error(traceback.format_exc(e))
+                logging.exception(e)
 
 
 if __name__ == "__main__":
