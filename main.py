@@ -3,7 +3,7 @@
 
 import argparse
 import logging
-from newspaper import Article, build
+from newspaper import Article, build, Config
 from bs4 import BeautifulSoup
 from contextlib import closing
 from requests import get
@@ -24,7 +24,7 @@ class Argparser(object):
 
 # TODO-maybe actually really do some logging
 def logError(err):
-    print(err)
+    logging.exception(err)
 
 
 def isAGoodResponse(resp):
@@ -66,12 +66,18 @@ def getURLS(source):
     return result
 
 
+def configNews(config):
+    config.fetch_images = False
+    config.keep_article_html = True
+    config.memoize_articles = False
+    config.browser_user_agent = "Chrome/91.0.4464.5"
+
+
 def main():
     argparser = Argparser()
+    config = Config()
+    configNews(config)
     urls = getURLS(argparser.args.source)
-    # import sys
-    # print(urls)
-    # sys.exit(0)
     for url in urls:
         parser = build(url)
         for article in parser.articles:
@@ -79,6 +85,7 @@ def main():
             try:
                 a.download()
                 a.parse()
+                # print(a.html)
                 print(a.text)
             except Exception as e:
                 logging.exception(e)
