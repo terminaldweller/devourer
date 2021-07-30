@@ -9,6 +9,9 @@ from contextlib import closing
 from requests import get
 from requests.exceptions import RequestException
 from re import findall
+from readability import Document
+from gtts import gTTS
+from datetime import datetime as time
 
 
 class Argparser(object):
@@ -85,8 +88,11 @@ def main():
             try:
                 a.download()
                 a.parse()
-                # print(a.html)
-                print(a.text)
+                doc = Document(a.html)
+                print(doc.summary())
+                if a.text != '':
+                    tts = gTTS(a.text)
+                    tts.save(time.today().strftime("%b-%d-%Y-%M-%S-%f")+".mp3")
             except Exception as e:
                 logging.exception(e)
 

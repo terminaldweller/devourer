@@ -9,6 +9,8 @@ license = "GPL3.0"
 python = "^3.8"
 newspaper3k = "^0.2.8"
 beautifulsoup4 = "^4.9.3"
+readability-lxml = "^0.8.1"
+gtts = "^2.2.3"
 
 [tool.poetry.dev-dependencies]
 
