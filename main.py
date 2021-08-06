@@ -6,7 +6,7 @@ import logging
 from newspaper import Article, build, Config
 from bs4 import BeautifulSoup
 from contextlib import closing
-from requests import get
+from requests import get, Response
 from requests.exceptions import RequestException
 from re import findall
 from readability import Document
@@ -26,17 +26,20 @@ class Argparser(object):
 
 
 # TODO-maybe actually really do some logging
-def logError(err):
+def logError(err: RequestException) -> None:
+    """logs the errors"""
     logging.exception(err)
 
 
-def isAGoodResponse(resp):
+def isAGoodResponse(resp: Response) -> bool:
+    """checks whether the get we sent got a 200 response"""
     content_type = resp.headers['Content-Type'].lower()
     return (resp.status_code == 200 and
             content_type is not None and content_type.find("html") > -1)
 
 
-def simpleGet(url):
+def simpleGet(url: str) -> bytes:
+    """issues a simple get request to download a website"""
     try:
         with closing(get(url, stream=True)) as resp:
             if isAGoodResponse(resp):
@@ -48,7 +51,8 @@ def simpleGet(url):
         return None
 
 
-def getURLS(source):
+def getURLS(source: str) -> dict:
+    """extracts the urls from a website"""
     result = dict()
     raw_ml = simpleGet(source)
     ml = BeautifulSoup(raw_ml, "lxml")
@@ -69,14 +73,15 @@ def getURLS(source):
     return result
 
 
-def configNews(config):
+def configNews(config: Config) -> None:
+    """configures newspaper"""
     config.fetch_images = False
     config.keep_article_html = True
     config.memoize_articles = False
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
-def main():
+def main() -> None:
     argparser = Argparser()
     config = Config()
     configNews(config)
