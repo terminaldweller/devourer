@@ -23,5 +23,5 @@ FROM python-base as production
 ENV FASTAPI_ENV=production
 COPY --from=builder-base $VENV_PATH $VENV_PATH
 COPY ./main.py $PYSETUP_PATH/main.py
-ENTRYPOINT $PYSETUP_PATH/main.py
+ENTRYPOINT ["$PYSETUP_PATH/main.py"]
 # CMD ["--source", "https://github.com/coinpride/CryptoList"]

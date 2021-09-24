@@ -11,6 +11,9 @@ newspaper3k = "^0.2.8"
 beautifulsoup4 = "^4.9.3"
 readability-lxml = "^0.8.1"
 gtts = "^2.2.3"
+tika = "^1.24"
+docker = "^5.0.2"
+nltk = "^3.6.3"
 
 [tool.poetry.dev-dependencies]
 
