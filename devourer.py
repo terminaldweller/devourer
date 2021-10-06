@@ -57,19 +57,19 @@ class Argparser(object):
 
 # FIXME-maybe actually really do some logging
 def logError(err: RequestException) -> None:
-    """logs the errors"""
+    """logs the errors."""
     logging.exception(err)
 
 
 def isAGoodResponse(resp: Response) -> bool:
-    """checks whether the get we sent got a 200 response"""
+    """checks whether the get we sent got a 200 response."""
     content_type = resp.headers['Content-Type'].lower()
     return (resp.status_code == 200 and
             content_type is not None)
 
 
 def simpleGet(url: str) -> bytes:
-    """issues a simple get request"""
+    """issues a simple get request."""
     try:
         with closing(get(url, stream=True)) as resp:
             if isAGoodResponse(resp):
@@ -82,7 +82,7 @@ def simpleGet(url: str) -> bytes:
 
 
 def getWithParams(url: str, params: dict) -> dict:
-    """issues a get requesti with params"""
+    """issues a get requesti with params."""
     try:
         with closing(get(url, params=params, stream=True)) as resp:
             if isAGoodResponse(resp):
@@ -95,7 +95,7 @@ def getWithParams(url: str, params: dict) -> dict:
 
 
 def getURLS(source: str) -> dict:
-    """extracts the urls from a website"""
+    """extracts the urls from a website."""
     result = dict()
     raw_ml = simpleGet(source)
     ml = BeautifulSoup(raw_ml, "lxml")
@@ -117,16 +117,16 @@ def getURLS(source: str) -> dict:
 
 
 def configNews(config: Config) -> None:
-    """configures newspaper"""
+    """configures newspaper."""
     config.fetch_images = False
     config.keep_article_html = True
     config.memoize_articles = False
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
+# TODO-should probably deprecate this at some point
 def call_from_shell_list(command_list: list):
-    """run a shell command given a list of command/arguments"""
-    # TODO-should probably deprecate this at some point
+    """run a shell command given a list of command/arguments."""
     if sys.version_info < (3, 7):
         return subprocess.run(command_list, stdout=subprocess.PIPE)
     else:
@@ -134,7 +134,7 @@ def call_from_shell_list(command_list: list):
 
 
 def pdfToVoice(argparser: Argparser) -> None:
-    """main function for converting a pdf to an mp3"""
+    """main function for converting a pdf to an mp3."""
     TIKA_SERVER_ENDPOINT = "127.0.0.1:9977"
     os.environ["TIKA_SERVER_ENDPOINT"] = TIKA_SERVER_ENDPOINT
     dockerClient = docker.from_env()
@@ -155,7 +155,7 @@ def pdfToVoice(argparser: Argparser) -> None:
 
 def extractRequirements(textBody: str) -> list:
     """extract the sentences containing the keywords
-     that denote a requirement"""
+     that denote a requirement."""
     result = []
     REQ_KEYWORDS = ["shall", "should", "must", "may", "can", "could"]
     nltk.download("punkt")
@@ -168,7 +168,7 @@ def extractRequirements(textBody: str) -> list:
 
 
 def summarizeText(text: str) -> str:
-    """summarize the given text using bart"""
+    """summarize the given text using bart."""
     from transformers import BartTokenizer, BartForConditionalGeneration
     model = BartForConditionalGeneration.from_pretrained(
         'facebook/bart-large-cnn')
@@ -184,7 +184,7 @@ def summarizeText(text: str) -> str:
 
 
 def textToAudio(text: str) -> None:
-    """transform the given text into audio"""
+    """transform the given text into audio."""
     tts = gTTS(text)
     tts.save(time.today().strftime("%b-%d-%Y-%M-%S-%f")+".mp3")
 
@@ -209,7 +209,7 @@ def singleLinkMode(argparser: Argparser) -> dict:
 
 
 def summarizeLinkToAudio(argparser: Argparser) -> None:
-    """summarizes the text inside a given url into audio"""
+    """summarizes the text inside a given url into audio."""
     try:
         article = Article(argparser.args.source)
         article.download()
@@ -228,7 +228,7 @@ def summarizeLinkToAudio(argparser: Argparser) -> None:
 
 
 def summarizeLinksToAudio(argparser: Argparser) -> None:
-    """summarize a list of urls into audio files"""
+    """summarize a list of urls into audio files."""
     config = Config()
     configNews(config)
     urls = getURLS(argparser.args.source)
@@ -237,7 +237,7 @@ def summarizeLinksToAudio(argparser: Argparser) -> None:
 
 
 def searchWikipedia(argparser: Argparser) -> str:
-    """search wikipedia for a string and return the url"""
+    """search wikipedia for a string and return the url."""
     searchParmas = {
         "action": "opensearch",
         "namespace": "0",
