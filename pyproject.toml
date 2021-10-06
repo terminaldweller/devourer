@@ -14,6 +14,9 @@ gtts = "^2.2.3"
 tika = "^1.24"
 docker = "^5.0.2"
 nltk = "^3.6.3"
+tensorflow = "^2.6.0"
+torch = "^1.9.1"
+transformers = "^4.11.2"
 
 [tool.poetry.dev-dependencies]
 
