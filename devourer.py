@@ -9,6 +9,8 @@ import tika
 import docker
 import os
 import nltk
+import random
+import string
 from newspaper import Article, build, Config
 from bs4 import BeautifulSoup
 from contextlib import closing
@@ -26,32 +28,60 @@ WIKIPEDIA_SEARCH_URL = "https://en.wikipedia.org/w/api.php"
 class Argparser(object):
     def __init__(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--source",
-                            type=str, help="the url where the \
-                            urls to be extracted reside")
-        parser.add_argument("--out", type=str,
-                            help="the output file", default="")
-        parser.add_argument("--singlelink", action="store_true",
-                            help="whether the app should work in single-link \
+        parser.add_argument(
+            "--source",
+            type=str,
+            help="the url where the \
+                            urls to be extracted reside",
+            default="",
+        )
+        parser.add_argument(
+            "--out",
+            type=str,
+            help="the output file name if it applies",
+            default="",
+        )
+        parser.add_argument(
+            "--singlelink",
+            action="store_true",
+            help="whether the app should work in single-link \
                             meaning only one page's contents will be used \
-                            mode", default=False)
-        parser.add_argument("--multilink", action="store_true",
-                            help="whether the app should work in multi-link \
+                            mode",
+            default=False,
+        )
+        parser.add_argument(
+            "--multilink",
+            action="store_true",
+            help="whether the app should work in multi-link \
                             mode meaning the srouce contians a list of links \
                             rather than being the actual source itself",
-                            default=False)
-        parser.add_argument("--sourcetype", type=str,
-                            help="determines the type of the \
-                            source.html,text,...")
-        parser.add_argument("--pdftomp3", action="store_true",
-                            default=False, help="convert pdf to mp3. \
+            default=False,
+        )
+        parser.add_argument(
+            "--sourcetype",
+            type=str,
+            help="determines the type of the \
+                            source:html,text,...",
+            default="html",
+        )
+        parser.add_argument(
+            "--pdftomp3",
+            action="store_true",
+            default=False,
+            help="convert pdf to mp3. \
                             source should be the path to a pdf file and\
-                            out should be the path to the mp3 output file")
-        parser.add_argument("--summary", type=str, default="newspaper",
-                            help="which summary type to use. currently we \
-                            have newspaper, bart and none.")
-        parser.add_argument("--search", type=str,
-                            default="", help="the search query")
+                            out should be the path to the mp3 output file",
+        )
+        parser.add_argument(
+            "--summary",
+            type=str,
+            default="newspaper",
+            help="which summary type to use. currently we \
+                            have newspaper, bart and none.",
+        )
+        parser.add_argument(
+            "--search", type=str, default="", help="the string to search for"
+        )
         self.args = parser.parse_args()
 
 
@@ -63,9 +93,8 @@ def logError(err: RequestException) -> None:
 
 def isAGoodResponse(resp: Response) -> bool:
     """Checks whether the get we sent got a 200 response."""
-    content_type = resp.headers['Content-Type'].lower()
-    return (resp.status_code == 200 and
-            content_type is not None)
+    content_type = resp.headers["Content-Type"].lower()
+    return resp.status_code == 200 and content_type is not None
 
 
 def simpleGet(url: str) -> bytes:
@@ -94,23 +123,32 @@ def getWithParams(url: str, params: dict) -> dict:
         return None
 
 
+def getRandStr(n):
+    """Return a random string of the given length."""
+    return "".join([random.choice(string.lowercase) for i in range(n)])
+
+
 def getURLS(source: str) -> dict:
     """Extracts the urls from a website."""
     result = dict()
     raw_ml = simpleGet(source)
     ml = BeautifulSoup(raw_ml, "lxml")
+
+    rand_tmp = "/tmp/" + getRandStr(20)
     ml_str = repr(ml)
-    tmp = open("/tmp/riecher", "w")
+    tmp = open(rand_tmp, "w")
     tmp.write(ml_str)
     tmp.close()
-    tmp = open("/tmp/riecher", "r")
-    dump_list = []
+    tmp = open(rand_tmp, "r")
+    url_list = []
     for line in tmp:
-        dummy = findall(
-            'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|'
-            r'(?:%[0-9a-fA-F][0-9a-fA-F]))+', line)
-        dump_list += dummy
-    for elem in dump_list:
+        url = findall(
+            "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|"
+            r"(?:%[0-9a-fA-F][0-9a-fA-F]))+",
+            line,
+        )
+        url_list += url
+    for elem in url_list:
         result[elem] = elem
     tmp.close()
     return result
@@ -138,16 +176,16 @@ def pdfToVoice(argparser: Argparser) -> None:
     TIKA_SERVER_ENDPOINT = "127.0.0.1:9977"
     os.environ["TIKA_SERVER_ENDPOINT"] = TIKA_SERVER_ENDPOINT
     dockerClient = docker.from_env()
-    container = dockerClient.containers.run("apache/tika:2.0.0", detach=True,
-                                            ports={TIKA_SERVER_ENDPOINT:
-                                                   "9998"})
+    container = dockerClient.containers.run(
+        "apache/tika:2.0.0", detach=True, ports={TIKA_SERVER_ENDPOINT: "9998"}
+    )
     while True:
         resp = get("http://127.0.0.1:9977")
         if resp.status_code == 200:
             break
-        time.sleep(.5)
+        time.sleep(0.5)
     rawText = tika.parser.from_file()
-    tts = gTTS(rawText['content'])
+    tts = gTTS(rawText["content"])
     tts.save(argparser.args.out)
     container.stop()
     dockerClient.close()
@@ -155,7 +193,7 @@ def pdfToVoice(argparser: Argparser) -> None:
 
 def extractRequirements(textBody: str) -> list:
     """Extract the sentences containing the keywords
-     that denote a requirement."""
+    that denote a requirement."""
     result = []
     REQ_KEYWORDS = ["shall", "should", "must", "may", "can", "could"]
     nltk.download("punkt")
@@ -169,28 +207,32 @@ def extractRequirements(textBody: str) -> list:
 
 def summarizeText(text: str) -> str:
     """Summarize the given text using bart."""
-    from transformers import BartTokenizer, BartForConditionalGeneration
-    model = BartForConditionalGeneration.from_pretrained(
-        'facebook/bart-large-cnn')
-    tokenizer = BartTokenizer.from_pretrained('facebook/bart-large-cnn')
-    inputs = tokenizer([text],
-                       max_length=1024, return_tensors='pt')
+    import transformers
+
+    model = transformers.BartForConditionalGeneration.from_pretrained(
+        "facebook/bart-large-cnn"
+    )
+    tokenizer = transformers.BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+    inputs = tokenizer([text], max_length=1024, return_tensors="pt")
     summary_ids = model.generate(
-        inputs['input_ids'], num_beams=4, max_length=5, early_stopping=True)
-    return([tokenizer.decode(g,
-                             skip_special_tokens=True,
-                             clean_up_tokenization_spaces=False)
-            for g in summary_ids])
+        inputs["input_ids"], num_beams=4, max_length=5, early_stopping=True
+    )
+    return [
+        tokenizer.decode(
+            g, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        for g in summary_ids
+    ]
 
 
 def textToAudio(text: str) -> None:
     """Transform the given text into audio."""
     tts = gTTS(text)
-    tts.save(time.today().strftime("%b-%d-%Y-%M-%S-%f")+".mp3")
+    tts.save(time.today().strftime("%b-%d-%Y-%M-%S-%f") + ".mp3")
 
 
 def singleLinkMode(argparser: Argparser) -> dict:
-    """runs the single-link main function"""
+    """Runs the single-link main function."""
     if argparser.args.sourcetype == "html":
         parser = build(argparser.args.source)
         for article in parser.articles:
@@ -243,7 +285,7 @@ def searchWikipedia(argparser: Argparser) -> str:
         "namespace": "0",
         "search": argparser.args.search,
         "limit": "10",
-        "format": "json"
+        "format": "json",
     }
     res = getWithParams(WIKIPEDIA_SEARCH_URL, searchParmas)
     print(res)
