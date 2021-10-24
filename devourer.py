@@ -3,8 +3,6 @@
 
 import argparse
 import logging
-import subprocess
-import sys
 import tika
 import docker
 import os
@@ -162,15 +160,6 @@ def configNews(config: Config) -> None:
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
-# TODO-should probably deprecate this at some point
-def call_from_shell_list(command_list: list):
-    """Run a shell command given a list of command/arguments."""
-    if sys.version_info < (3, 7):
-        return subprocess.run(command_list, stdout=subprocess.PIPE)
-    else:
-        return subprocess.run(command_list, capture_output=True)
-
-
 def pdfToVoice(argparser: Argparser) -> None:
     """Main function for converting a pdf to an mp3."""
     TIKA_SERVER_ENDPOINT = "127.0.0.1:9977"
@@ -192,10 +181,22 @@ def pdfToVoice(argparser: Argparser) -> None:
 
 
 def extractRequirements(textBody: str) -> list:
-    """Extract the sentences containing the keywords
-    that denote a requirement."""
+    """Extract the sentences containing the keywords that denote a requirement.
+
+    the keywords are baed on ISO/IEC directives, part 2:
+    https://www.iso.org/sites/directives/current/part2/index.xhtml
+    """
     result = []
-    REQ_KEYWORDS = ["shall", "should", "must", "may", "can", "could"]
+    REQ_KEYWORDS = [
+        "shall",
+        "shall not",
+        "should",
+        "should not",
+        "must",
+        "may",
+        "can",
+        "cannot",
+    ]
     nltk.download("punkt")
     sentences = nltk.sent_tokenize(textBody)
     for sentence in sentences:
@@ -212,7 +213,9 @@ def summarizeText(text: str) -> str:
     model = transformers.BartForConditionalGeneration.from_pretrained(
         "facebook/bart-large-cnn"
     )
-    tokenizer = transformers.BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+    tokenizer = transformers.BartTokenizer.from_pretrained(
+        "facebook/bart-large-cnn"
+    )
     inputs = tokenizer([text], max_length=1024, return_tensors="pt")
     summary_ids = model.generate(
         inputs["input_ids"], num_beams=4, max_length=5, early_stopping=True
@@ -279,7 +282,10 @@ def summarizeLinksToAudio(argparser: Argparser) -> None:
 
 
 def searchWikipedia(argparser: Argparser) -> str:
-    """Search wikipedia for a string and return the url."""
+    """Search wikipedia for a string and return the url.
+
+    reference: https://www.mediawiki.org/wiki/API:Opensearch
+    """
     searchParmas = {
         "action": "opensearch",
         "namespace": "0",
