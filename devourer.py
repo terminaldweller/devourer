@@ -1,14 +1,11 @@
-#!/usr/bin/env python3
 # _*_ coding=utf-8 _*_
 
-import argparse
 import logging
 import tika
-import docker
-import os
 import nltk
 import random
 import string
+import os
 from newspaper import Article, build, Config
 from bs4 import BeautifulSoup
 from contextlib import closing
@@ -18,69 +15,7 @@ from re import findall
 from readability import Document
 from gtts import gTTS
 from datetime import datetime as time
-
-
-WIKIPEDIA_SEARCH_URL = "https://en.wikipedia.org/w/api.php"
-
-
-class Argparser(object):
-    def __init__(self):
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--source",
-            type=str,
-            help="the url where the \
-                            urls to be extracted reside",
-            default="",
-        )
-        parser.add_argument(
-            "--out",
-            type=str,
-            help="the output file name if it applies",
-            default="",
-        )
-        parser.add_argument(
-            "--singlelink",
-            action="store_true",
-            help="whether the app should work in single-link \
-                            meaning only one page's contents will be used \
-                            mode",
-            default=False,
-        )
-        parser.add_argument(
-            "--multilink",
-            action="store_true",
-            help="whether the app should work in multi-link \
-                            mode meaning the srouce contians a list of links \
-                            rather than being the actual source itself",
-            default=False,
-        )
-        parser.add_argument(
-            "--sourcetype",
-            type=str,
-            help="determines the type of the \
-                            source:html,text,...",
-            default="html",
-        )
-        parser.add_argument(
-            "--pdftomp3",
-            action="store_true",
-            default=False,
-            help="convert pdf to mp3. \
-                            source should be the path to a pdf file and\
-                            out should be the path to the mp3 output file",
-        )
-        parser.add_argument(
-            "--summary",
-            type=str,
-            default="newspaper",
-            help="which summary type to use. currently we \
-                            have newspaper, bart and none.",
-        )
-        parser.add_argument(
-            "--search", type=str, default="", help="the string to search for"
-        )
-        self.args = parser.parse_args()
+from fastapi import FastAPI
 
 
 # FIXME-maybe actually really do some logging
@@ -109,7 +44,7 @@ def simpleGet(url: str) -> bytes:
 
 
 def getWithParams(url: str, params: dict) -> dict:
-    """Issues a get requesti with params."""
+    """Issues a get request with params."""
     try:
         with closing(get(url, params=params, stream=True)) as resp:
             if isAGoodResponse(resp):
@@ -160,24 +95,19 @@ def configNews(config: Config) -> None:
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
-def pdfToVoice(argparser: Argparser) -> None:
+# FIXME-have to decide whether to use files or urls
+def pdfToVoice() -> str:
     """Main function for converting a pdf to an mp3."""
-    TIKA_SERVER_ENDPOINT = "127.0.0.1:9977"
-    os.environ["TIKA_SERVER_ENDPOINT"] = TIKA_SERVER_ENDPOINT
-    dockerClient = docker.from_env()
-    container = dockerClient.containers.run(
-        "apache/tika:2.0.0", detach=True, ports={TIKA_SERVER_ENDPOINT: "9998"}
-    )
-    while True:
-        resp = get("http://127.0.0.1:9977")
-        if resp.status_code == 200:
-            break
-        time.sleep(0.5)
-    rawText = tika.parser.from_file()
-    tts = gTTS(rawText["content"])
-    tts.save(argparser.args.out)
-    container.stop()
-    dockerClient.close()
+    outfile = str()
+    try:
+        rawText = tika.parser.from_file()
+        tts = gTTS(rawText["content"])
+        outfile = getRandStr(20) + ".mp3"
+        tts.save(outfile)
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        return outfile
 
 
 def extractRequirements(textBody: str) -> list:
@@ -228,90 +158,204 @@ def summarizeText(text: str) -> str:
     ]
 
 
-def textToAudio(text: str) -> None:
+def textToAudio(text: str) -> str:
     """Transform the given text into audio."""
-    tts = gTTS(text)
-    tts.save(time.today().strftime("%b-%d-%Y-%M-%S-%f") + ".mp3")
+    try:
+        path = str()
+        path = (
+            os.environ["AUDIO_DUMP_DIR"]
+            + time.today().strftime("%b-%d-%Y-%M-%S-%f")
+            + ".mp3"
+        )
+        tts = gTTS(text)
+        tts.save(path)
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        return path
 
 
-def singleLinkMode(argparser: Argparser) -> dict:
+def getRequirements(url: str, sourcetype: str) -> list:
     """Runs the single-link main function."""
-    if argparser.args.sourcetype == "html":
-        parser = build(argparser.args.source)
-        for article in parser.articles:
-            a = Article(article.url)
-            try:
+    result = str()
+    results = list()
+    try:
+        if sourcetype == "html":
+            parser = build(url)
+            for article in parser.articles:
+                a = Article(article.url)
                 a.download()
                 a.parse()
                 doc = Document(a.html)
-                print(doc.summary())
-                extractRequirements(doc.summary())
-            except Exception as e:
-                logging.exception(e)
-    elif argparser.args.sourcetype == "text":
-        bytesText = simpleGet(argparser.args.source)
-        extractRequirements(bytesText.decode("utf-8"))
-
-
-def summarizeLinkToAudio(argparser: Argparser) -> None:
-    """Summarizes the text inside a given url into audio."""
-    try:
-        article = Article(argparser.args.source)
-        article.download()
-        article.parse()
-        if argparser.args.summary == "newspaper":
-            article.nlp()
-            textToAudio(article.summary)
-        elif argparser.args.summary == "none":
-            textToAudio(article.text)
-        elif argparser.args.summary == "bart":
-            textToAudio(summarizeText(article.text))
-        else:
-            print("invalid option for summry type.")
+                # print(doc.summary())
+                results = extractRequirements(doc.summary())
+        elif sourcetype == "text":
+            bytesText = simpleGet(url)
+            results = extractRequirements(bytesText.decode("utf-8"))
     except Exception as e:
         logging.exception(e)
+    finally:
+        result = "".join(results + "\n")
+        return result
 
 
-def summarizeLinksToAudio(argparser: Argparser) -> None:
+def summarizeLinkToAudio(url, summary) -> str:
+    """Summarizes the text inside a given url into audio."""
+    result = str()
+    try:
+        article = Article(url)
+        article.download()
+        article.parse()
+        if summary == "newspaper":
+            article.nlp()
+            result = article.summary
+        elif summary == "none":
+            result = article.text
+        elif summary == "bart":
+            result = article.text
+        else:
+            print("invalid option for summary type.")
+            result = None
+    except Exception as e:
+        result = None
+        logging.exception(e)
+    finally:
+        return result
+
+
+def summarizeLinksToAudio(url, summary) -> None:
     """Summarize a list of urls into audio files."""
-    config = Config()
-    configNews(config)
-    urls = getURLS(argparser.args.source)
-    for url in urls:
-        summarizeLinkToAudio(url)
+    results = list()
+    result = str()
+    try:
+        config = Config()
+        configNews(config)
+        urls = getURLS(url, summary)
+        for url in urls:
+            results.append(summarizeLinkToAudio(url))
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        result = "".join(results)
+        return result
 
 
-def searchWikipedia(argparser: Argparser) -> str:
+def searchWikipedia(search_term: str) -> str:
     """Search wikipedia for a string and return the url.
 
     reference: https://www.mediawiki.org/wiki/API:Opensearch
     """
-    searchParmas = {
-        "action": "opensearch",
-        "namespace": "0",
-        "search": argparser.args.search,
-        "limit": "10",
-        "format": "json",
+    result = str()
+    try:
+        searchParmas = {
+            "action": "opensearch",
+            "namespace": "0",
+            "search": search_term,
+            "limit": "10",
+            "format": "json",
+        }
+        res = getWithParams(os.environ["WIKI_SEARCH_URL"], searchParmas)
+        # FIXME-handle wiki redirects/disambiguations
+        # argparser.args.source = res[3][0]
+        print(res)
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        return result
+
+
+def getAudioFromFile(audio_path: str) -> str:
+    """Returns the contents of a file in binary format"""
+    with open(audio_path, "rb") as audio:
+        return audio.read()
+
+
+app = FastAPI()
+
+
+@app.get("/tika")
+async def pdf_to_audio_ep(url: str):
+    """turns a pdf into an audiofile"""
+    audio_path = pdfToVoice()
+    return {
+        "Content-Type": "application/json",
+        "isOK": True if audio_path != "" else False,
+        "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
     }
-    res = getWithParams(WIKIPEDIA_SEARCH_URL, searchParmas)
-    print(res)
-    argparser.args.source = res[3][0]
-    summarizeLinkToAudio(argparser)
 
 
-def main() -> None:
-    argparser = Argparser()
-    if argparser.args.singlelink:
-        summarizeLinkToAudio(argparser)
-    elif argparser.args.multilink:
-        summarizeLinksToAudio(argparser)
-    elif argparser.args.pdftomp3:
-        pdfToVoice(argparser)
-    elif argparser.args.search:
-        searchWikipedia(argparser)
+@app.get("/reqs")
+async def extract_reqs_ep(url: str, sourcetype: str = "html"):
+    """extracts the requirements from a given url"""
+    result = getRequirements()
+    return {
+        "Content-Type": "application/json",
+        "isOK": True if result != "" else False,
+        "reqs": result,
+    }
+
+
+@app.get("/wiki")
+async def wiki_search_ep(term: str, audio: bool = False):
+    """search and summarizes from wikipedia"""
+    text = searchWikipedia(term)
+    if audio:
+        audio_path = textToAudio(text)
+        return {
+            "Content-Type": "application/json",
+            "isOK": (True if audio_path != "" else False)
+            and (True if text != "" else False),
+            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
+            "text": text,
+        }
     else:
-        pass
+        return {
+            "Content-Type": "application/json",
+            "isOK": True if text != "" else False,
+            "audio": "",
+            "text": text,
+        }
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/summ")
+async def summarize_ep(url: str, summary: str = "none", audio: bool = False):
+    """summarize and turn the summary into audio"""
+    text = summarizeLinkToAudio(url, summary)
+    if audio:
+        audio_path = textToAudio(text)
+        return {
+            "Content-Type": "application/json",
+            "isOK": (True if audio_path != "" else False)
+            and (True if text != "" else False),
+            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
+            "text": text,
+        }
+    else:
+        return {
+            "Content-Type": "application/json",
+            "isOK": True if text != "" else False,
+            "audio": "",
+            "text": text,
+        }
+
+
+@app.get("/mila")
+async def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
+    """extract all the urls and then summarize and turn into audio"""
+    text = summarizeLinksToAudio(url, summary)
+    if audio:
+        audio_path = textToAudio(text)
+        return {
+            "Content-Type": "application/json",
+            "isOK": (True if audio_path != "" else False)
+            and (True if text != "" else False),
+            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
+            "text": text,
+        }
+    else:
+        return {
+            "Content-Type": "application/json",
+            "isOK": True if text != "" else False,
+            "audio": "",
+            "text": text,
+        }

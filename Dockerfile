@@ -19,9 +19,16 @@ WORKDIR $PYSETUP_PATH
 COPY ./pyproject.toml ./
 RUN poetry install --no-dev
 
+FROM node:lts-alpine3.13 AS certbuilder
+RUN apk add openssl
+WORKDIR /certs
+RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=localhost" -keyout server.key -out server.cert
+
 FROM python-base as production
+RUN pip3 install uvicorn
+COPY --from=certbuilder /certs/ /certs
 ENV FASTAPI_ENV=production
 COPY --from=builder-base $VENV_PATH $VENV_PATH
-COPY ./main.py $PYSETUP_PATH/main.py
-ENTRYPOINT ["$PYSETUP_PATH/main.py"]
-# CMD ["--source", "https://github.com/coinpride/CryptoList"]
+COPY ./docker-entrypoint.sh /docker-entrypoint.sh
+COPY ./devourer.py $PYSETUP_PATH/devourer.py
+WORKDIR $PYSETUP_PATH
