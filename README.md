@@ -6,8 +6,5 @@
 A knowledge aggregator
 
 ## Usage Example
-```sh
-./devourer.py --singlelink --source https://en.wikipedia.org/wiki/I/O_virtualization
-```
 
-
+Using FastAPI now so just check the docs.
