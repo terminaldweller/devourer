@@ -127,7 +127,6 @@ def extractRequirements(textBody: str) -> list:
         "can",
         "cannot",
     ]
-    nltk.download("punkt")
     sentences = nltk.sent_tokenize(textBody)
     for sentence in sentences:
         for keyword in REQ_KEYWORDS:
@@ -160,15 +159,12 @@ def summarizeText(text: str) -> str:
 
 def textToAudio(text: str) -> str:
     """Transform the given text into audio."""
+    path = str()
     try:
-        path = str()
-        path = (
-            os.environ["AUDIO_DUMP_DIR"]
-            + time.today().strftime("%b-%d-%Y-%M-%S-%f")
-            + ".mp3"
-        )
+        time_str = time.today().strftime("%b-%d-%Y-%M-%S-%f")
         tts = gTTS(text)
-        tts.save(path)
+        tts.save(os.environ["AUDIO_DUMP_DIR"] + "/" + time_str + ".mp3")
+        path = os.environ["AUDIO_DUMP_DIR"] + "/" + time_str + ".mp3"
     except Exception as e:
         logging.exception(e)
     finally:
@@ -199,6 +195,7 @@ def getRequirements(url: str, sourcetype: str) -> list:
         return result
 
 
+# FIXME-summary=bart doesnt work
 def summarizeLinkToAudio(url, summary) -> str:
     """Summarizes the text inside a given url into audio."""
     result = str()
@@ -221,6 +218,7 @@ def summarizeLinkToAudio(url, summary) -> str:
         return result
 
 
+# FIXME-change my name
 def summarizeLinksToAudio(url, summary) -> None:
     """Summarize a list of urls into audio files."""
     results = list()
@@ -269,9 +267,10 @@ def getAudioFromFile(audio_path: str) -> str:
 
 
 app = FastAPI()
+nltk.download("punkt")
 
 
-@app.get("/tika")
+@app.get("/mila/tika")
 async def pdf_to_audio_ep(url: str):
     """turns a pdf into an audiofile"""
     audio_path = pdfToVoice()
@@ -282,7 +281,7 @@ async def pdf_to_audio_ep(url: str):
     }
 
 
-@app.get("/reqs")
+@app.get("/mila/reqs")
 async def extract_reqs_ep(url: str, sourcetype: str = "html"):
     """extracts the requirements from a given url"""
     result = getRequirements()
@@ -293,7 +292,7 @@ async def extract_reqs_ep(url: str, sourcetype: str = "html"):
     }
 
 
-@app.get("/wiki")
+@app.get("/mila/wiki")
 async def wiki_search_ep(term: str, audio: bool = False):
     """search and summarizes from wikipedia"""
     text = searchWikipedia(term)
@@ -315,34 +314,36 @@ async def wiki_search_ep(term: str, audio: bool = False):
         }
 
 
-@app.get("/summ")
+@app.get("/mila/summ")
 async def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     """summarize and turn the summary into audio"""
     text = summarizeLinkToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
+        print(audio_path)
         return {
-            "Content-Type": "application/json",
-            "isOK": (True if audio_path != "" else False)
-            and (True if text != "" else False),
+            "Content-Type": "audio/mpeg",
+            # "isOK": (True if audio_path != "" else False)
+            # and (True if text != "" else False),
             "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
-            "text": text,
+            # "text": text,
         }
     else:
         return {
             "Content-Type": "application/json",
             "isOK": True if text != "" else False,
-            "audio": "",
+            # "audio": "",
             "text": text,
         }
 
 
-@app.get("/mila")
+@app.get("/mila/mila")
 async def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
     """extract all the urls and then summarize and turn into audio"""
     text = summarizeLinksToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
+        print(audio_path)
         return {
             "Content-Type": "application/json",
             "isOK": (True if audio_path != "" else False)
@@ -357,3 +358,17 @@ async def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
             "audio": "",
             "text": text,
         }
+
+
+@app.get("/mila/health")
+async def health_ep():
+    return {"isOK": True}
+
+
+@app.get("/mila/robots.txt")
+async def robots_ep():
+    return {
+        "Content-Type": "apllication/json",
+        "User-Agents": "*",
+        "Disallow": "/",
+    }
