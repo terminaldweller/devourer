@@ -215,9 +215,7 @@ def summarizeLinkToAudio(url, summary) -> str:
             result = article.text
         else:
             print("invalid option for summary type.")
-            result = None
     except Exception as e:
-        result = None
         logging.exception(e)
     finally:
         return result
@@ -256,8 +254,8 @@ def searchWikipedia(search_term: str) -> str:
         }
         res = getWithParams(os.environ["WIKI_SEARCH_URL"], searchParmas)
         # FIXME-handle wiki redirects/disambiguations
-        # argparser.args.source = res[3][0]
-        print(res)
+        source = res[3][0]
+        result = summarizeLinkToAudio(source, "none")
     except Exception as e:
         logging.exception(e)
     finally:

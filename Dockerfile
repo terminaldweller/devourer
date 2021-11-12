@@ -25,7 +25,6 @@ WORKDIR /certs
 RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=localhost" -keyout server.key -out server.cert
 
 FROM python-base as production
-RUN pip3 install uvicorn
 COPY --from=certbuilder /certs/ /certs
 ENV FASTAPI_ENV=production
 COPY --from=builder-base $VENV_PATH $VENV_PATH

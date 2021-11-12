@@ -8,17 +8,17 @@ services:
     depends_on:
       - tika
     ports:
-      - "9009:80"
+      - "19019:80"
     environment:
-      - TIKA_SERVER_ENDPOINT="tika:9998"
-      - AUDIO_DUMP_DIR="/tmp"
-      - WIKI_SEARCH_URL="https://en.wikipedia.org/w/api.php"
+      - TIKA_SERVER_ENDPOINT=tika:9998
+      - AUDIO_DUMP_DIR=/tmp
+      - WIKI_SEARCH_URL=https://en.wikipedia.org/w/api.php
       - SERVER_DEPLOYMENT_TYPE=test
     cap_drop:
       - ALL
     entrypoint: ["/docker-entrypoint.sh"]
   tika:
-    image: apache/tike:2.0.0
+    image: apache/tika:2.0.0
     networks:
       - tikanet
     cap_drop:
