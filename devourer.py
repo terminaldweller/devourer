@@ -16,6 +16,7 @@ from readability import Document
 from gtts import gTTS
 from datetime import datetime as time
 from fastapi import FastAPI
+from fastapi import Response as APIResponse
 
 
 # FIXME-maybe actually really do some logging
@@ -271,18 +272,17 @@ nltk.download("punkt")
 
 
 @app.get("/mila/tika")
-async def pdf_to_audio_ep(url: str):
+def pdf_to_audio_ep(url: str):
     """turns a pdf into an audiofile"""
     audio_path = pdfToVoice()
-    return {
-        "Content-Type": "application/json",
-        "isOK": True if audio_path != "" else False,
-        "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
-    }
+    return APIResponse(
+        getAudioFromFile(audio_path) if audio_path != "" else "",
+        media_type="audio/mpeg",
+    )
 
 
 @app.get("/mila/reqs")
-async def extract_reqs_ep(url: str, sourcetype: str = "html"):
+def extract_reqs_ep(url: str, sourcetype: str = "html"):
     """extracts the requirements from a given url"""
     result = getRequirements()
     return {
@@ -293,18 +293,15 @@ async def extract_reqs_ep(url: str, sourcetype: str = "html"):
 
 
 @app.get("/mila/wiki")
-async def wiki_search_ep(term: str, audio: bool = False):
+def wiki_search_ep(term: str, audio: bool = False):
     """search and summarizes from wikipedia"""
     text = searchWikipedia(term)
     if audio:
         audio_path = textToAudio(text)
-        return {
-            "Content-Type": "application/json",
-            "isOK": (True if audio_path != "" else False)
-            and (True if text != "" else False),
-            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
-            "text": text,
-        }
+        return FastAPI(
+            getAudioFromFile(audio_path) if audio_path != "" else "",
+            media_type="audio/mpeg",
+        )
     else:
         return {
             "Content-Type": "application/json",
@@ -315,19 +312,16 @@ async def wiki_search_ep(term: str, audio: bool = False):
 
 
 @app.get("/mila/summ")
-async def summarize_ep(url: str, summary: str = "none", audio: bool = False):
+def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     """summarize and turn the summary into audio"""
     text = summarizeLinkToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
         print(audio_path)
-        return {
-            "Content-Type": "audio/mpeg",
-            # "isOK": (True if audio_path != "" else False)
-            # and (True if text != "" else False),
-            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
-            # "text": text,
-        }
+        return APIResponse(
+            getAudioFromFile(audio_path) if audio_path != "" else "",
+            media_type="audio/mpeg",
+        )
     else:
         return {
             "Content-Type": "application/json",
@@ -338,19 +332,16 @@ async def summarize_ep(url: str, summary: str = "none", audio: bool = False):
 
 
 @app.get("/mila/mila")
-async def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
+def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
     """extract all the urls and then summarize and turn into audio"""
     text = summarizeLinksToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
         print(audio_path)
-        return {
-            "Content-Type": "application/json",
-            "isOK": (True if audio_path != "" else False)
-            and (True if text != "" else False),
-            "audio": getAudioFromFile(audio_path) if audio_path != "" else "",
-            "text": text,
-        }
+        return APIResponse(
+            getAudioFromFile(audio_path) if audio_path != "" else "",
+            media_type="audio/mpeg",
+        )
     else:
         return {
             "Content-Type": "application/json",
@@ -361,12 +352,12 @@ async def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
 
 
 @app.get("/mila/health")
-async def health_ep():
+def health_ep():
     return {"isOK": True}
 
 
 @app.get("/mila/robots.txt")
-async def robots_ep():
+def robots_ep():
     return {
         "Content-Type": "apllication/json",
         "User-Agents": "*",
