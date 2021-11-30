@@ -131,7 +131,7 @@ def extractRequirements(textBody: str) -> list:
     sentences = nltk.sent_tokenize(textBody)
     for sentence in sentences:
         for keyword in REQ_KEYWORDS:
-            if sentence.find(keyword) >= 0:
+            if sentence.casefold().find(keyword) >= 0:
                 result.append(sentence)
     return result
 
@@ -183,17 +183,22 @@ def getRequirements(url: str, sourcetype: str) -> list:
                 a = Article(article.url)
                 a.download()
                 a.parse()
+                a.nlp()
                 doc = Document(a.html)
+                print(doc)
                 # print(doc.summary())
-                results = extractRequirements(doc.summary())
+                # results = extractRequirements(doc.summary())
+                results = extractRequirements(doc)
         elif sourcetype == "text":
             bytesText = simpleGet(url)
             results = extractRequirements(bytesText.decode("utf-8"))
     except Exception as e:
         logging.exception(e)
     finally:
-        result = "".join(results + "\n")
-        return result
+        print(result)
+        # result = "".join(results) + "\n"
+        # return result
+        return results
 
 
 # FIXME-summary=bart doesnt work
@@ -284,10 +289,10 @@ def pdf_to_audio_ep(url: str):
 @app.get("/mila/reqs")
 def extract_reqs_ep(url: str, sourcetype: str = "html"):
     """extracts the requirements from a given url"""
-    result = getRequirements()
+    result = getRequirements(url, sourcetype)
     return {
         "Content-Type": "application/json",
-        "isOK": True if result != "" else False,
+        "isOK": True if result is not None else False,
         "reqs": result,
     }
 
