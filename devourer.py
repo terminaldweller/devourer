@@ -242,7 +242,7 @@ def summarizeLinksToAudio(url, summary) -> None:
         return result
 
 
-def searchWikipedia(search_term: str) -> str:
+def searchWikipedia(search_term: str, summary: str) -> str:
     """Search wikipedia for a string and return the url.
 
     reference: https://www.mediawiki.org/wiki/API:Opensearch
@@ -259,7 +259,7 @@ def searchWikipedia(search_term: str) -> str:
         res = getWithParams(os.environ["WIKI_SEARCH_URL"], searchParmas)
         # FIXME-handle wiki redirects/disambiguations
         source = res[3][0]
-        result = summarizeLinkToAudio(source, "none")
+        result = summarizeLinkToAudio(source, summary)
     except Exception as e:
         logging.exception(e)
     finally:
@@ -298,12 +298,12 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
 
 
 @app.get("/mila/wiki")
-def wiki_search_ep(term: str, audio: bool = False):
+def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     """search and summarizes from wikipedia"""
-    text = searchWikipedia(term)
+    text = searchWikipedia(term, summary)
     if audio:
         audio_path = textToAudio(text)
-        return FastAPI(
+        return APIResponse(
             getAudioFromFile(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
