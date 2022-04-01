@@ -1,31 +1,30 @@
 # _*_ coding=utf-8 _*_
 
+import bs4
+import contextlib
+import datetime
+import fastapi
+import gtts
 import logging
-import tika
+import newspaper
 import nltk
-import random
-import string
 import os
-from newspaper import Article, build, Config
-from bs4 import BeautifulSoup
-from contextlib import closing
-from requests import get, Response
-from requests.exceptions import RequestException
-from re import findall
-from readability import Document
-from gtts import gTTS
-from datetime import datetime as time
-from fastapi import FastAPI
-from fastapi import Response as APIResponse
+import random
+import re
+import readability
+import requests
+import string
+import tika
+import transformers
 
 
 # FIXME-maybe actually really do some logging
-def logError(err: RequestException) -> None:
+def logError(err: requests.exceptions.RequestException) -> None:
     """Logs the errors."""
     logging.exception(err)
 
 
-def isAGoodResponse(resp: Response) -> bool:
+def isAGoodResponse(resp: requests.Response) -> bool:
     """Checks whether the get we sent got a 200 response."""
     content_type = resp.headers["Content-Type"].lower()
     return resp.status_code == 200 and content_type is not None
@@ -34,12 +33,12 @@ def isAGoodResponse(resp: Response) -> bool:
 def simpleGet(url: str) -> bytes:
     """Issues a simple get request."""
     try:
-        with closing(get(url, stream=True)) as resp:
+        with contextlib.closing(requests.get(url, stream=True)) as resp:
             if isAGoodResponse(resp):
                 return resp.content
             else:
                 return None
-    except RequestException as e:
+    except requests.exceptions.RequestException as e:
         logError("Error during requests to {0} : {1}".format(url, str(e)))
         return None
 
@@ -47,12 +46,14 @@ def simpleGet(url: str) -> bytes:
 def getWithParams(url: str, params: dict) -> dict:
     """Issues a get request with params."""
     try:
-        with closing(get(url, params=params, stream=True)) as resp:
+        with contextlib.closing(
+            requests.get(url, params=params, stream=True)
+        ) as resp:
             if isAGoodResponse(resp):
                 return resp.json()
             else:
                 return None
-    except RequestException as e:
+    except requests.exceptions.RequestException as e:
         logError("Error during requests to {0} : {1}".format(url, str(e)))
         return None
 
@@ -66,7 +67,7 @@ def getURLS(source: str) -> dict:
     """Extracts the urls from a website."""
     result = dict()
     raw_ml = simpleGet(source)
-    ml = BeautifulSoup(raw_ml, "lxml")
+    ml = bs4.BeautifulSoup(raw_ml, "lxml")
 
     rand_tmp = "/tmp/" + getRandStr(20)
     ml_str = repr(ml)
@@ -76,7 +77,7 @@ def getURLS(source: str) -> dict:
     tmp = open(rand_tmp, "r")
     url_list = []
     for line in tmp:
-        url = findall(
+        url = re.findall(
             "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|"
             r"(?:%[0-9a-fA-F][0-9a-fA-F]))+",
             line,
@@ -88,7 +89,7 @@ def getURLS(source: str) -> dict:
     return result
 
 
-def configNews(config: Config) -> None:
+def configNews(config: newspaper.Config) -> None:
     """Configures newspaper."""
     config.fetch_images = False
     config.keep_article_html = True
@@ -102,7 +103,7 @@ def pdfToVoice() -> str:
     outfile = str()
     try:
         rawText = tika.parser.from_file()
-        tts = gTTS(rawText["content"])
+        tts = gtts.gTTS(rawText["content"])
         outfile = getRandStr(20) + ".mp3"
         tts.save(outfile)
     except Exception as e:
@@ -138,7 +139,6 @@ def extractRequirements(textBody: str) -> list:
 
 def summarizeText(text: str) -> str:
     """Summarize the given text using bart."""
-    import transformers
 
     model = transformers.BartForConditionalGeneration.from_pretrained(
         "facebook/bart-large-cnn"
@@ -162,8 +162,8 @@ def textToAudio(text: str) -> str:
     """Transform the given text into audio."""
     path = str()
     try:
-        time_str = time.today().strftime("%b-%d-%Y-%M-%S-%f")
-        tts = gTTS(text)
+        time_str = datetime.datetime.today().strftime("%b-%d-%Y-%M-%S-%f")
+        tts = gtts.gTTS(text)
         tts.save(os.environ["AUDIO_DUMP_DIR"] + "/" + time_str + ".mp3")
         path = os.environ["AUDIO_DUMP_DIR"] + "/" + time_str + ".mp3"
     except Exception as e:
@@ -178,13 +178,13 @@ def getRequirements(url: str, sourcetype: str) -> list:
     results = list()
     try:
         if sourcetype == "html":
-            parser = build(url)
+            parser = newspaper.build(url)
             for article in parser.articles:
-                a = Article(article.url)
+                a = newspaper.Article(article.url)
                 a.download()
                 a.parse()
                 a.nlp()
-                doc = Document(a.html)
+                doc = readability.Document(a.html)
                 print(doc)
                 # print(doc.summary())
                 # results = extractRequirements(doc.summary())
@@ -206,7 +206,7 @@ def summarizeLinkToAudio(url, summary) -> str:
     """Summarizes the text inside a given url into audio."""
     result = str()
     try:
-        article = Article(url)
+        article = newspaper.Article(url)
         article.download()
         article.parse()
         if summary == "newspaper":
@@ -230,7 +230,7 @@ def summarizeLinksToAudio(url, summary) -> None:
     results = list()
     result = str()
     try:
-        config = Config()
+        config = newspaper.Config()
         configNews(config)
         urls = getURLS(url, summary)
         for url in urls:
@@ -272,7 +272,38 @@ def getAudioFromFile(audio_path: str) -> str:
         return audio.read()
 
 
-app = FastAPI()
+def getSentiments() -> list:
+    """Get sentiments"""
+    results = list()
+    SOURCE = "https://github.com/coinpride/CryptoList"
+    urls = simpleGet(SOURCE)
+    classifier = transformers.pipeline("sentiment-analysis")
+    for url in urls:
+        req_result = simpleGet(url)
+        results.append(classifier(req_result))
+    return results
+
+
+app = fastapi.FastAPI()
+
+
+# https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
+@app.middleware("http")
+async def addSecureHeaders(
+    request: fastapi.Request, call_next
+) -> fastapi.Response:
+    """adds security headers proposed by OWASP"""
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Content-Security-Policy"] = "default-src-https"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
+    return response
+
+
+app.add_middleware(addSecureHeaders)
 nltk.download("punkt")
 
 
@@ -280,7 +311,7 @@ nltk.download("punkt")
 def pdf_to_audio_ep(url: str):
     """turns a pdf into an audiofile"""
     audio_path = pdfToVoice()
-    return APIResponse(
+    return fastapi.Response(
         getAudioFromFile(audio_path) if audio_path != "" else "",
         media_type="audio/mpeg",
     )
@@ -303,7 +334,7 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     text = searchWikipedia(term, summary)
     if audio:
         audio_path = textToAudio(text)
-        return APIResponse(
+        return fastapi.Response(
             getAudioFromFile(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
@@ -323,7 +354,7 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     if audio:
         audio_path = textToAudio(text)
         print(audio_path)
-        return APIResponse(
+        return fastapi.Response(
             getAudioFromFile(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
@@ -343,7 +374,7 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
     if audio:
         audio_path = textToAudio(text)
         print(audio_path)
-        return APIResponse(
+        return fastapi.Response(
             getAudioFromFile(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
@@ -354,6 +385,13 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
             "audio": "",
             "text": text,
         }
+
+
+@app.get("/mila/sentiments")
+def sentiments_endpoint(url: str):
+    """the sentiments endpoint"""
+    sentiments = getSentiments()
+    return {"Content-Type": "application/json", "Sentiments": sentiments}
 
 
 @app.get("/mila/health")
