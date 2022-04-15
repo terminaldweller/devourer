@@ -3,7 +3,7 @@ services:
   devourer:
     image: devourer
     build:
-      - context: .
+      context: .
     networks:
       - mainnet
       - tikanet
