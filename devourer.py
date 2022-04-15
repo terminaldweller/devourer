@@ -1,6 +1,7 @@
 # _*_ coding=utf-8 _*_
 
 import bs4
+import concurrent.futures
 import contextlib
 import datetime
 import fastapi
@@ -272,7 +273,7 @@ def getAudioFromFile(audio_path: str) -> str:
         return audio.read()
 
 
-def getSentiments() -> list:
+def getSentiments(detailed: bool) -> list:
     """Get sentiments"""
     results = list()
     SOURCE = "https://github.com/coinpride/CryptoList"
@@ -388,15 +389,15 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
 
 
 @app.get("/mila/sentiments")
-def sentiments_endpoint(url: str):
+def sentiments_endpoint(url: str, detailed: bool):
     """the sentiments endpoint"""
-    sentiments = getSentiments()
+    sentiments = getSentiments(detailed)
     return {"Content-Type": "application/json", "Sentiments": sentiments}
 
 
 @app.get("/mila/health")
 def health_ep():
-    return {"isOK": True}
+    return {"Content-Type": "application/json", "isOK": True}
 
 
 @app.get("/mila/robots.txt")
