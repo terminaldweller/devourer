@@ -2,6 +2,8 @@ version: "3.7"
 services:
   devourer:
     image: devourer
+    build:
+      - context: .
     networks:
       - mainnet
       - tikanet
