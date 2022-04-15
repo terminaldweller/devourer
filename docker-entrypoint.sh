@@ -7,8 +7,8 @@ if [ "$SERVER_DEPLOYMENT_TYPE" = "deployment" ]; then
     --ssl-certfile /certs/server.cert \
     --ssl-keyfile /certs/server.key \
     --no-proxy-headers \
-    --no-server-headers \
-    --no-date-headers
+    --no-server-header \
+    --no-date-header
 elif [ "$SERVER_DEPLOYMENT_TYPE" = "test" ]; then
   uvicorn devourer:app \
     --host 0.0.0.0 \
@@ -16,6 +16,6 @@ elif [ "$SERVER_DEPLOYMENT_TYPE" = "test" ]; then
     --ssl-certfile /certs/server.cert \
     --ssl-keyfile /certs/server.key \
     --no-proxy-headers \
-    --no-server-headers \
-    --no-date-headers
+    --no-server-header \
+    --no-date-header
 fi
