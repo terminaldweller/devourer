@@ -304,7 +304,6 @@ async def addSecureHeaders(
     return response
 
 
-app.add_middleware(addSecureHeaders)
 nltk.download("punkt")
 
 
