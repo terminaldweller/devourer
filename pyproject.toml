@@ -6,7 +6,7 @@ authors = ["terminaldweller <thabogre@gmail.com>"]
 license = "GPL3.0"
 
 [tool.poetry.dependencies]
-python = "3.8"
+python = "^3.8"
 newspaper3k = "^0.2.8"
 beautifulsoup4 = "^4.9.3"
 readability-lxml = "^0.8.1"

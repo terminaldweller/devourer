@@ -1,7 +1,6 @@
 # _*_ coding=utf-8 _*_
 
 import bs4
-import concurrent.futures
 import contextlib
 import datetime
 import fastapi
@@ -15,7 +14,9 @@ import re
 import readability
 import requests
 import string
+import tempfile
 import tika
+from tika import parser as tparser
 import transformers
 
 
@@ -136,6 +137,26 @@ def extractRequirements(textBody: str) -> list:
             if sentence.casefold().find(keyword) >= 0:
                 result.append(sentence)
     return result
+
+
+def pdfToText(url: str) -> str:
+    """Convert the PDF file to a string"""
+    tikaResult = dict()
+    try:
+        with tempfile.NamedTemporaryFile(mode="w+b", delete=True) as tmpFile:
+            tmpFile.write(simpleGet(url))
+            tikaResult = tparser.from_file(
+                tmpFile.name, serverEndpoint=os.environ["TIKA_SERVER_ENDPOINT"]
+            )
+            print(tikaResult["metadata"])
+            print(tikaResult["content"])
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        if "content" in tikaResult:
+            return tikaResult["content"]
+        else:
+            return ""
 
 
 def summarizeText(text: str) -> str:
@@ -307,6 +328,24 @@ async def addSecureHeaders(
 nltk.download("punkt")
 
 
+@app.get("/mila/pdf")
+def pdf_ep(url: str, feat: str, audio: bool = False, summarize: bool = False):
+    text = pdfToText(url)
+    if summarize:
+        text = summarizeText(text)
+    # if audio:
+    #     audio_path = textToAudio(text)
+    # return fastapi.Response(
+    #     getAudioFromFile(audio_path) if audio_path != "" else "",
+    #     media_type="audio/mpeg",
+    # )
+    return {
+        "Content-Type": "application/json",
+        "isOk": True if text != "" else False,
+        "result": text,
+    }
+
+
 @app.get("/mila/tika")
 def pdf_to_audio_ep(url: str):
     """turns a pdf into an audiofile"""
@@ -385,13 +424,6 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
             "audio": "",
             "text": text,
         }
-
-
-@app.get("/mila/sentiments")
-def sentiments_endpoint(url: str, detailed: bool):
-    """the sentiments endpoint"""
-    sentiments = getSentiments(detailed)
-    return {"Content-Type": "application/json", "Sentiments": sentiments}
 
 
 @app.get("/mila/health")

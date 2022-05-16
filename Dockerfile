@@ -19,7 +19,7 @@ WORKDIR $PYSETUP_PATH
 COPY ./pyproject.toml ./
 RUN poetry install --no-dev
 
-FROM node:lts-alpine3.13 AS certbuilder
+FROM alpine:3.15 AS certbuilder
 RUN apk add openssl
 WORKDIR /certs
 RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=localhost" -keyout server.key -out server.cert

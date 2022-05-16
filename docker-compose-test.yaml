@@ -12,10 +12,11 @@ services:
     ports:
       - "19019:80"
     environment:
-      - TIKA_SERVER_ENDPOINT=tika:9998
+      - TIKA_SERVER_ENDPOINT=http://tika:9998
       - AUDIO_DUMP_DIR=/tmp
       - WIKI_SEARCH_URL=https://en.wikipedia.org/w/api.php
       - SERVER_DEPLOYMENT_TYPE=test
+      - TIKA_CLIENT_ONLY=True
     cap_drop:
       - ALL
     entrypoint: ["/docker-entrypoint.sh"]
