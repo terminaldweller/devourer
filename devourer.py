@@ -180,6 +180,10 @@ def summarizeText(text: str) -> str:
     ]
 
 
+def summarizeText_v2(text: str) -> str:
+    pass
+
+
 def textToAudio(text: str) -> str:
     """Transform the given text into audio."""
     path = str()
@@ -326,6 +330,7 @@ async def addSecureHeaders(
 
 
 nltk.download("punkt")
+transformers_summarizer = transformers.pipeline("summarization")
 
 
 @app.get("/mila/pdf")

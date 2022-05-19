@@ -18,6 +18,7 @@ torch = "^1.9.1"
 transformers = "^4.11.2"
 fastapi = "^0.70.0"
 uvicorn = "^0.15.0"
+refextract = "^1.1.4"
 
 [tool.poetry.dev-dependencies]
 
