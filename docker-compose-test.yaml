@@ -3,12 +3,13 @@ services:
   devourer:
     image: devourer
     build:
-      context: .
+      context: ./devourer
     networks:
       - mainnet
       - tikanet
     depends_on:
       - tika
+      - cargo
     ports:
       - "19019:80"
     environment:
@@ -26,6 +27,26 @@ services:
       - tikanet
     cap_drop:
       - ALL
+  cargo:
+    image: devourer-cargo
+    build:
+      context: ./devourer
+    networks:
+      - mainnet
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_VAULT=/cargo-vault
+    volumes:
+      - cargo-vault:/cargo-vault
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    entrypoint: ["/cargo/cargo.py"]
 networks:
   mainnet:
   tikanet:
+volumes:
+  cargo-vault:

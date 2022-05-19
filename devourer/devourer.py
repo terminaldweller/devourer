@@ -159,6 +159,7 @@ def pdfToText(url: str) -> str:
             return ""
 
 
+# FIXME doesnt work for long texts
 def summarizeText(text: str) -> str:
     """Summarize the given text using bart."""
 
