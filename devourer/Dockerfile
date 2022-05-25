@@ -22,9 +22,10 @@ RUN poetry install --no-dev
 FROM alpine:3.15 AS certbuilder
 RUN apk add openssl
 WORKDIR /certs
-RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=localhost" -keyout server.key -out server.cert
+RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=mila.terminaldweller.com" -keyout server.key -out server.cert
 
 FROM python-base as production
+RUN apt update && apt install --no-install-recommends -y poppler-utils
 COPY --from=certbuilder /certs/ /certs
 ENV FASTAPI_ENV=production
 COPY --from=builder-base $VENV_PATH $VENV_PATH

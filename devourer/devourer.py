@@ -99,6 +99,13 @@ def configNews(config: newspaper.Config) -> None:
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
+def sanitizeText(text: str) -> str:
+    text = text.replace("\n", "")
+    text = text.replace("\n\r", "")
+    text = text.replace('"', "")
+    return text
+
+
 # FIXME-have to decide whether to use files or urls
 def pdfToVoice() -> str:
     """Main function for converting a pdf to an mp3."""
@@ -135,8 +142,21 @@ def extractRequirements(textBody: str) -> list:
     for sentence in sentences:
         for keyword in REQ_KEYWORDS:
             if sentence.casefold().find(keyword) >= 0:
-                result.append(sentence)
+                result.append(sanitizeText(sentence))
     return result
+
+
+def extractRefs(url: str) -> list:
+    import refextract
+
+    refs = list()
+    try:
+        refs = refextract.extract_references_from_url(url)
+        return refs
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        return refs
 
 
 def pdfToText(url: str) -> str:
@@ -148,13 +168,13 @@ def pdfToText(url: str) -> str:
             tikaResult = tparser.from_file(
                 tmpFile.name, serverEndpoint=os.environ["TIKA_SERVER_ENDPOINT"]
             )
-            print(tikaResult["metadata"])
-            print(tikaResult["content"])
+            # print(tikaResult["metadata"])
+            # print(tikaResult["content"])
     except Exception as e:
         logging.exception(e)
     finally:
         if "content" in tikaResult:
-            return tikaResult["content"]
+            return sanitizeText(tikaResult["content"])
         else:
             return ""
 
@@ -245,6 +265,8 @@ def summarizeLinkToAudio(url, summary) -> str:
             result = article.text
         else:
             print("invalid option for summary type.")
+        if result != "":
+            result = sanitizeText(result)
     except Exception as e:
         logging.exception(e)
     finally:
@@ -287,6 +309,7 @@ def searchWikipedia(search_term: str, summary: str) -> str:
         # FIXME-handle wiki redirects/disambiguations
         source = res[3][0]
         result = summarizeLinkToAudio(source, summary)
+        result = sanitizeText(result)
     except Exception as e:
         logging.exception(e)
     finally:
@@ -331,25 +354,35 @@ async def addSecureHeaders(
 
 
 nltk.download("punkt")
-transformers_summarizer = transformers.pipeline("summarization")
+# transformers_summarizer = transformers.pipeline("summarization")
 
 
 @app.get("/mila/pdf")
-def pdf_ep(url: str, feat: str, audio: bool = False, summarize: bool = False):
-    text = pdfToText(url)
-    if summarize:
-        text = summarizeText(text)
-    # if audio:
-    #     audio_path = textToAudio(text)
-    # return fastapi.Response(
-    #     getAudioFromFile(audio_path) if audio_path != "" else "",
-    #     media_type="audio/mpeg",
-    # )
-    return {
-        "Content-Type": "application/json",
-        "isOk": True if text != "" else False,
-        "result": text,
-    }
+def pdf_ep(
+    url: str, feat: str = "", audio: bool = False, summarize: bool = False
+):
+    if feat == "":
+        text = pdfToText(url)
+        if summarize:
+            text = summarizeText(text)
+        if audio:
+            audio_path = textToAudio(text)
+            return fastapi.Response(
+                getAudioFromFile(audio_path) if audio_path != "" else "",
+                media_type="audio/mpeg",
+            )
+        return {
+            "Content-Type": "application/json",
+            "isOk": True if text != "" else False,
+            "result": text,
+        }
+    elif feat == "refs":
+        refs = extractRefs(url)
+        return {
+            "Content-Type": "application/json",
+            "isOk": True if refs is not None else False,
+            "result": refs,
+        }
 
 
 @app.get("/mila/tika")

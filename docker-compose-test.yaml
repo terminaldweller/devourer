@@ -21,6 +21,8 @@ services:
     cap_drop:
       - ALL
     entrypoint: ["/docker-entrypoint.sh"]
+    volumes:
+      - devourer-nltk-data:/root/nltk_data/
   tika:
     image: apache/tika:2.0.0
     networks:
@@ -50,3 +52,4 @@ networks:
   tikanet:
 volumes:
   cargo-vault:
+  devourer-nltk-data:
