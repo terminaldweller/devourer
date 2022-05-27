@@ -8,7 +8,7 @@ import os
 # https://huggingface.co/docs/huggingface_hub/how-to-downstream
 def download(path: str = ".") -> None:
     bart_pretrained = hh.hf_hub_url(
-        "lysandre/arxiv-nlp", filename="config.json"
+        "sshleifer/distilbart-cnn-12-6", filename="config.json"
     )
     hh.cached_download(bart_pretrained)
 

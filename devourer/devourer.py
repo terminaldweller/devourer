@@ -181,23 +181,43 @@ def pdfToText(url: str) -> str:
 # FIXME doesnt work for long texts
 def summarizeText(text: str) -> str:
     """Summarize the given text using bart."""
+    result = str
+    # TODO move me later
+    transformers_summarizer = transformers.pipeline("summarization")
+    try:
+        sentences = text.split(".")
+        current_chunk = 0
+        max_chunk = 500
+        chunks = []
 
-    model = transformers.BartForConditionalGeneration.from_pretrained(
-        "facebook/bart-large-cnn"
-    )
-    tokenizer = transformers.BartTokenizer.from_pretrained(
-        "facebook/bart-large-cnn"
-    )
-    inputs = tokenizer([text], max_length=1024, return_tensors="pt")
-    summary_ids = model.generate(
-        inputs["input_ids"], num_beams=4, max_length=5, early_stopping=True
-    )
-    return [
-        tokenizer.decode(
-            g, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        for sentence in sentences:
+            if len(chunks) == current_chunk + 1:
+                if (
+                    len(chunks[current_chunk]) + len(sentence.split(" "))
+                    <= max_chunk
+                ):
+                    chunks[current_chunk].extend(sentence.split(" "))
+                else:
+                    current_chunk = +1
+                    chunks.append(sentence.split(" "))
+            else:
+                chunks.append(sentence.split(" "))
+        print(chunks)
+
+        for chunk_id in range(len(chunks)):
+            chunks[chunk_id] = "".join(chunks[chunk_id])
+        print(chunks)
+
+        summaries = transformers_summarizer(
+            chunks, max_length=50, min_length=30, do_sample=False
         )
-        for g in summary_ids
-    ]
+
+        result = "".join([summary["summary_text"] for summary in summaries])
+        print(result)
+    except Exception as e:
+        logging.exception(e)
+    finally:
+        return result
 
 
 def summarizeText_v2(text: str) -> str:
@@ -335,6 +355,8 @@ def getSentiments(detailed: bool) -> list:
 
 app = fastapi.FastAPI()
 
+nltk.download("punkt")
+
 
 # https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
 @app.middleware("http")
@@ -350,10 +372,6 @@ async def addSecureHeaders(
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Access-Control-Allow-Methods"] = "GET,OPTIONS"
     return response
-
-
-nltk.download("punkt")
-# transformers_summarizer = transformers.pipeline("summarization")
 
 
 @app.get("/mila/pdf")

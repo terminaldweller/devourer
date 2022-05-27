@@ -18,11 +18,13 @@ services:
       - WIKI_SEARCH_URL=https://en.wikipedia.org/w/api.php
       - SERVER_DEPLOYMENT_TYPE=test
       - TIKA_CLIENT_ONLY=True
+      - TRANSFORMERS_CACHE=/huggingface/cache/
     cap_drop:
       - ALL
     entrypoint: ["/docker-entrypoint.sh"]
     volumes:
       - devourer-nltk-data:/root/nltk_data/
+      - devourer-hg-cache:/huggingface/cache/
   tika:
     image: apache/tika:2.0.0
     networks:
@@ -39,9 +41,9 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       - SERVER_PORT=8080
-      - SERVER_VAULT=/cargo-vault
+      - SERVER_VAULT=/cargo-vault/
     volumes:
-      - cargo-vault:/cargo-vault
+      - cargo-vault:/cargo-vault/
     cap_drop:
       - ALL
     cap_add:
@@ -53,3 +55,4 @@ networks:
 volumes:
   cargo-vault:
   devourer-nltk-data:
+  devourer-hg-cache:
