@@ -12,6 +12,7 @@ import os
 import random
 import re
 import readability
+import refextract
 import requests
 import string
 import tempfile
@@ -147,8 +148,6 @@ def extractRequirements(textBody: str) -> list:
 
 
 def extractRefs(url: str) -> list:
-    import refextract
-
     refs = list()
     try:
         refs = refextract.extract_references_from_url(url)

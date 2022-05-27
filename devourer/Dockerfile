@@ -25,7 +25,7 @@ WORKDIR /certs
 RUN openssl req -nodes -new -x509 -subj="/C=US/ST=Denial/L=springfield/O=Dis/CN=mila.terminaldweller.com" -keyout server.key -out server.cert
 
 FROM python-base as production
-RUN apt update && apt install --no-install-recommends -y poppler-utils
+RUN apt update && apt install --no-install-recommends -y poppler-utils python3-magic
 COPY --from=certbuilder /certs/ /certs
 ENV FASTAPI_ENV=production
 COPY --from=builder-base $VENV_PATH $VENV_PATH
