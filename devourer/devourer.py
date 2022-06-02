@@ -19,10 +19,11 @@ import tempfile
 import tika
 from tika import parser as tparser
 import transformers
+import typing
 
 
 # FIXME-maybe actually really do some logging
-def logError(err: requests.exceptions.RequestException) -> None:
+def logError(err: str) -> None:
     """Logs the errors."""
     logging.exception(err)
 
@@ -35,18 +36,18 @@ def isAGoodResponse(resp: requests.Response) -> bool:
 
 def simpleGet(url: str) -> bytes:
     """Issues a simple get request."""
+    content = bytes()
     try:
         with contextlib.closing(requests.get(url, stream=True)) as resp:
             if isAGoodResponse(resp):
-                return resp.content
-            else:
-                return None
+                content = resp.content
     except requests.exceptions.RequestException as e:
         logError("Error during requests to {0} : {1}".format(url, str(e)))
-        return None
+    finally:
+        return content
 
 
-def getWithParams(url: str, params: dict) -> dict:
+def getWithParams(url: str, params: dict) -> typing.Optional[dict]:
     """Issues a get request with params."""
     try:
         with contextlib.closing(
@@ -66,7 +67,7 @@ def getRandStr(n):
     return "".join([random.choice(string.lowercase) for i in range(n)])
 
 
-def getURLS(source: str) -> dict:
+def getURLS(source: str, summary: str) -> dict:
     """Extracts the urls from a website."""
     result = dict()
     raw_ml = simpleGet(source)
@@ -163,12 +164,15 @@ def pdfToText(url: str) -> str:
     tikaResult = dict()
     try:
         with tempfile.NamedTemporaryFile(mode="w+b", delete=True) as tmpFile:
-            tmpFile.write(simpleGet(url))
-            tikaResult = tparser.from_file(
-                tmpFile.name, serverEndpoint=os.environ["TIKA_SERVER_ENDPOINT"]
-            )
-            # print(tikaResult["metadata"])
-            # print(tikaResult["content"])
+            content = simpleGet(url)
+            if content is not None:
+                tmpFile.write(content)
+                tikaResult = tparser.from_file(
+                    tmpFile.name,
+                    serverEndpoint=os.environ["TIKA_SERVER_ENDPOINT"],
+                )
+                # print(tikaResult["metadata"])
+                # print(tikaResult["content"])
     except Exception as e:
         logging.exception(e)
     finally:
@@ -181,14 +185,14 @@ def pdfToText(url: str) -> str:
 # FIXME doesnt work for long texts
 def summarizeText(text: str) -> str:
     """Summarize the given text using bart."""
-    result = str
+    result = str()
     # TODO move me later
     transformers_summarizer = transformers.pipeline("summarization")
     try:
         sentences = text.split(".")
         current_chunk = 0
         max_chunk = 500
-        chunks = []
+        chunks: list = []
 
         for sentence in sentences:
             if len(chunks) == current_chunk + 1:
@@ -293,7 +297,7 @@ def summarizeLinkToAudio(url, summary) -> str:
 
 
 # FIXME-change my name
-def summarizeLinksToAudio(url, summary) -> None:
+def summarizeLinksToAudio(url: str, summary: str) -> str:
     """Summarize a list of urls into audio files."""
     results = list()
     result = str()
@@ -302,7 +306,7 @@ def summarizeLinksToAudio(url, summary) -> None:
         configNews(config)
         urls = getURLS(url, summary)
         for url in urls:
-            results.append(summarizeLinkToAudio(url))
+            results.append(summarizeLinkToAudio(url, summary))
     except Exception as e:
         logging.exception(e)
     finally:
@@ -326,23 +330,24 @@ def searchWikipedia(search_term: str, summary: str) -> str:
         }
         res = getWithParams(os.environ["WIKI_SEARCH_URL"], searchParmas)
         # FIXME-handle wiki redirects/disambiguations
-        source = res[3][0]
-        result = summarizeLinkToAudio(source, summary)
-        result = sanitizeText(result)
+        if res is not None:
+            source = res[3][0]
+            result = summarizeLinkToAudio(source, summary)
+            result = sanitizeText(result)
     except Exception as e:
         logging.exception(e)
     finally:
         return result
 
 
-def getAudioFromFile(audio_path: str) -> str:
+def getAudioFromFile(audio_path: str) -> bytes:
     """Returns the contents of a file in binary format"""
     with open(audio_path, "rb") as audio:
         return audio.read()
 
 
+"""
 def getSentiments(detailed: bool) -> list:
-    """Get sentiments"""
     results = list()
     SOURCE = "https://github.com/coinpride/CryptoList"
     urls = simpleGet(SOURCE)
@@ -351,6 +356,7 @@ def getSentiments(detailed: bool) -> list:
         req_result = simpleGet(url)
         results.append(classifier(req_result))
     return results
+"""
 
 
 app = fastapi.FastAPI()
@@ -378,6 +384,7 @@ async def addSecureHeaders(
 def pdf_ep(
     url: str, feat: str = "", audio: bool = False, summarize: bool = False
 ):
+    """the pdf manupulation endpoint"""
     if feat == "":
         text = pdfToText(url)
         if summarize:
