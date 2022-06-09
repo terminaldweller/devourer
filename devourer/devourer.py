@@ -1,25 +1,26 @@
 # _*_ coding=utf-8 _*_
 
-import bs4
 import contextlib
 import datetime
-import fastapi
-import gtts
 import logging
-import newspaper
-import nltk
 import os
 import random
 import re
+import string
+import tempfile
+import typing
+
+import bs4
+import fastapi
+import gtts
+import newspaper
+import nltk
 import readability
 import refextract
 import requests
-import string
-import tempfile
 import tika
-from tika import parser as tparser
 import transformers
-import typing
+from tika import parser as tparser
 
 
 # FIXME-maybe actually really do some logging
@@ -102,6 +103,7 @@ def configNews(config: newspaper.Config) -> None:
 
 
 def sanitizeText(text: str) -> str:
+    """Sanitize the strings."""
     text = text.replace("\n", "")
     text = text.replace("\n\r", "")
     text = text.replace('"', "")
@@ -125,7 +127,6 @@ def pdfToVoice() -> str:
 
 def extractRequirements(textBody: str) -> list:
     """Extract the sentences containing the keywords that denote a requirement.
-
     the keywords are baed on ISO/IEC directives, part 2:
     https://www.iso.org/sites/directives/current/part2/index.xhtml
     """
@@ -160,7 +161,7 @@ def extractRefs(url: str) -> list:
 
 
 def pdfToText(url: str) -> str:
-    """Convert the PDF file to a string"""
+    """Convert the PDF file to a string."""
     tikaResult = dict()
     try:
         with tempfile.NamedTemporaryFile(mode="w+b", delete=True) as tmpFile:
@@ -272,7 +273,7 @@ def getRequirements(url: str, sourcetype: str) -> list:
 
 
 # FIXME-summary=bart doesnt work
-def summarizeLinkToAudio(url, summary) -> str:
+def summarizeLinkToAudio(url: str, summary: str) -> str:
     """Summarizes the text inside a given url into audio."""
     result = str()
     try:
@@ -316,7 +317,6 @@ def summarizeLinksToAudio(url: str, summary: str) -> str:
 
 def searchWikipedia(search_term: str, summary: str) -> str:
     """Search wikipedia for a string and return the url.
-
     reference: https://www.mediawiki.org/wiki/API:Opensearch
     """
     result = str()
@@ -341,7 +341,7 @@ def searchWikipedia(search_term: str, summary: str) -> str:
 
 
 def getAudioFromFile(audio_path: str) -> bytes:
-    """Returns the contents of a file in binary format"""
+    """Returns the contents of a file in binary format."""
     with open(audio_path, "rb") as audio:
         return audio.read()
 
@@ -369,7 +369,7 @@ nltk.download("punkt")
 async def addSecureHeaders(
     request: fastapi.Request, call_next
 ) -> fastapi.Response:
-    """adds security headers proposed by OWASP"""
+    """adds security headers proposed by OWASP."""
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["Content-Security-Policy"] = "default-src-https"
@@ -384,7 +384,7 @@ async def addSecureHeaders(
 def pdf_ep(
     url: str, feat: str = "", audio: bool = False, summarize: bool = False
 ):
-    """the pdf manupulation endpoint"""
+    """the pdf manupulation endpoint."""
     if feat == "":
         text = pdfToText(url)
         if summarize:
@@ -411,7 +411,7 @@ def pdf_ep(
 
 @app.get("/mila/tika")
 def pdf_to_audio_ep(url: str):
-    """turns a pdf into an audiofile"""
+    """turns a pdf into an audiofile."""
     audio_path = pdfToVoice()
     return fastapi.Response(
         getAudioFromFile(audio_path) if audio_path != "" else "",
@@ -421,7 +421,7 @@ def pdf_to_audio_ep(url: str):
 
 @app.get("/mila/reqs")
 def extract_reqs_ep(url: str, sourcetype: str = "html"):
-    """extracts the requirements from a given url"""
+    """extracts the requirements from a given url."""
     result = getRequirements(url, sourcetype)
     return {
         "Content-Type": "application/json",
@@ -432,7 +432,7 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
 
 @app.get("/mila/wiki")
 def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
-    """search and summarizes from wikipedia"""
+    """search and summarizes from wikipedia."""
     text = searchWikipedia(term, summary)
     if audio:
         audio_path = textToAudio(text)
@@ -451,7 +451,7 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
 
 @app.get("/mila/summ")
 def summarize_ep(url: str, summary: str = "none", audio: bool = False):
-    """summarize and turn the summary into audio"""
+    """summarize and turn the summary into audio."""
     text = summarizeLinkToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
@@ -471,7 +471,7 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
 
 @app.get("/mila/mila")
 def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
-    """extract all the urls and then summarize and turn into audio"""
+    """extract all the urls and then summarize and turn into audio."""
     text = summarizeLinksToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
