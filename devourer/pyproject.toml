@@ -19,6 +19,7 @@ transformers = "^4.11.2"
 fastapi = "^0.70.0"
 uvicorn = "^0.15.0"
 refextract = "^1.1.4"
+rake-nltk = "^1.0.6"
 
 [tool.poetry.dev-dependencies]
 

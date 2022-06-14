@@ -15,6 +15,7 @@ import fastapi
 import gtts  # type:ignore
 import newspaper  # type:ignore
 import nltk  # type:ignore
+import rake_nltk  # type:ignore
 import readability  # type:ignore
 import refextract  # type:ignore
 import requests
@@ -24,42 +25,42 @@ from tika import parser as tparser
 
 
 # FIXME-maybe actually really do some logging
-def logError(err: str) -> None:
+def log_error(err: str) -> None:
     """Logs the errors."""
     logging.exception(err)
 
 
-def isAGoodResponse(resp: requests.Response) -> bool:
+def is_a_good_response(resp: requests.Response) -> bool:
     """Checks whether the get we sent got a 200 response."""
     content_type = resp.headers["Content-Type"].lower()
     return resp.status_code == 200 and content_type is not None
 
 
-def simpleGet(url: str) -> bytes:
+def simple_get(url: str) -> bytes:
     """Issues a simple get request."""
     content = bytes()
     try:
         with contextlib.closing(requests.get(url, stream=True)) as resp:
-            if isAGoodResponse(resp):
+            if is_a_good_response(resp):
                 content = resp.content
     except requests.exceptions.RequestException as e:
-        logError("Error during requests to {0} : {1}".format(url, str(e)))
+        log_error("Error during requests to {0} : {1}".format(url, str(e)))
     finally:
         return content
 
 
-def getWithParams(url: str, params: dict) -> typing.Optional[dict]:
+def get_with_params(url: str, params: dict) -> typing.Optional[dict]:
     """Issues a get request with params."""
     try:
         with contextlib.closing(
             requests.get(url, params=params, stream=True)
         ) as resp:
-            if isAGoodResponse(resp):
+            if is_a_good_response(resp):
                 return resp.json()
             else:
                 return None
     except requests.exceptions.RequestException as e:
-        logError("Error during requests to {0} : {1}".format(url, str(e)))
+        log_error("Error during requests to {0} : {1}".format(url, str(e)))
         return None
 
 
@@ -70,8 +71,8 @@ def getRandStr(n):
 
 def getURLS(source: str, summary: str) -> dict:
     """Extracts the urls from a website."""
-    result = dict()
-    raw_ml = simpleGet(source)
+    result = {}
+    raw_ml = simple_get(source)
     ml = bs4.BeautifulSoup(raw_ml, "lxml")
 
     rand_tmp = "/tmp/" + getRandStr(20)
@@ -94,7 +95,7 @@ def getURLS(source: str, summary: str) -> dict:
     return result
 
 
-def configNews(config: newspaper.Config) -> None:
+def config_news(config: newspaper.Config) -> None:
     """Configures newspaper."""
     config.fetch_images = False
     config.keep_article_html = True
@@ -102,7 +103,7 @@ def configNews(config: newspaper.Config) -> None:
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
-def sanitizeText(text: str) -> str:
+def sanitize_text(text: str) -> str:
     """Sanitize the strings."""
     text = text.replace("\n", "")
     text = text.replace("\n\r", "")
@@ -111,7 +112,7 @@ def sanitizeText(text: str) -> str:
 
 
 # FIXME-have to decide whether to use files or urls
-def pdfToVoice() -> str:
+def pdf_to_voice() -> str:
     """Main function for converting a pdf to an mp3."""
     outfile = str()
     try:
@@ -145,13 +146,13 @@ def extractRequirements(textBody: str) -> list:
     for sentence in sentences:
         for keyword in REQ_KEYWORDS:
             if sentence.casefold().find(keyword) >= 0:
-                result.append(sanitizeText(sentence))
+                result.append(sanitize_text(sentence))
     return result
 
 
-def extractRefs(url: str) -> list:
+def extract_refs(url: str) -> list:
     """Extract the references from an article."""
-    refs = list()
+    refs = []
     try:
         refs = refextract.extract_references_from_url(url)
         return refs
@@ -161,12 +162,12 @@ def extractRefs(url: str) -> list:
         return refs
 
 
-def pdfToText(url: str) -> str:
+def pdf_to_text(url: str) -> str:
     """Convert the PDF file to a string."""
-    tikaResult = dict()
+    tikaResult = {}
     try:
         with tempfile.NamedTemporaryFile(mode="w+b", delete=True) as tmpFile:
-            content = simpleGet(url)
+            content = simple_get(url)
             if content is not None:
                 tmpFile.write(content)
                 tikaResult = tparser.from_file(
@@ -179,13 +180,13 @@ def pdfToText(url: str) -> str:
         logging.exception(e)
     finally:
         if "content" in tikaResult:
-            return sanitizeText(tikaResult["content"])
+            return sanitize_text(tikaResult["content"])
         else:
             return ""
 
 
-# FIXME doesnt work for long texts
-def summarizeText(text: str) -> str:
+# TODO-very performance-intensive
+def summarize_text(text: str) -> str:
     """Summarize the given text using bart."""
     result = str()
     # TODO move me later
@@ -226,7 +227,7 @@ def summarizeText(text: str) -> str:
         return result
 
 
-def summarizeText_v2(text: str) -> str:
+def summarize_text_v2(text: str) -> str:
     """Text summarization using nltk."""
     stop_words = set(nltk.corpus.stopwords.words("english"))
     words = nltk.tokenize.word_tokenize(text)
@@ -267,7 +268,7 @@ def summarizeText_v2(text: str) -> str:
     return summary
 
 
-def textToAudio(text: str) -> str:
+def text_to_audio(text: str) -> str:
     """Transform the given text into audio."""
     path = str()
     try:
@@ -284,7 +285,7 @@ def textToAudio(text: str) -> str:
 def getRequirements(url: str, sourcetype: str) -> list:
     """Runs the single-link main function."""
     result = str()
-    results = list()
+    results = []
     try:
         if sourcetype == "html":
             parser = newspaper.build(url)
@@ -299,7 +300,7 @@ def getRequirements(url: str, sourcetype: str) -> list:
                 # results = extractRequirements(doc.summary())
                 results = extractRequirements(doc)
         elif sourcetype == "text":
-            bytesText = simpleGet(url)
+            bytesText = simple_get(url)
             results = extractRequirements(bytesText.decode("utf-8"))
     except Exception as e:
         logging.exception(e)
@@ -328,7 +329,7 @@ def summarizeLinkToAudio(url: str, summary: str) -> str:
         else:
             print("invalid option for summary type.")
         if result != "":
-            result = sanitizeText(result)
+            result = sanitize_text(result)
     except Exception as e:
         logging.exception(e)
     finally:
@@ -338,11 +339,11 @@ def summarizeLinkToAudio(url: str, summary: str) -> str:
 # FIXME-change my name
 def summarizeLinksToAudio(url: str, summary: str) -> str:
     """Summarize a list of urls into audio files."""
-    results = list()
+    results = []
     result = str()
     try:
         config = newspaper.Config()
-        configNews(config)
+        config_news(config)
         urls = getURLS(url, summary)
         for url in urls:
             results.append(summarizeLinkToAudio(url, summary))
@@ -366,19 +367,19 @@ def searchWikipedia(search_term: str, summary: str) -> str:
             "limit": "10",
             "format": "json",
         }
-        res = getWithParams(os.environ["WIKI_SEARCH_URL"], searchParmas)
+        res = get_with_params(os.environ["WIKI_SEARCH_URL"], searchParmas)
         # FIXME-handle wiki redirects/disambiguations
         if res is not None:
             source = res[3][0]
             result = summarizeLinkToAudio(source, summary)
-            result = sanitizeText(result)
+            result = sanitize_text(result)
     except Exception as e:
         logging.exception(e)
     finally:
         return result
 
 
-def getAudioFromFile(audio_path: str) -> bytes:
+def get_audio_from_file(audio_path: str) -> bytes:
     """Returns the contents of a file in binary format."""
     with open(audio_path, "rb") as audio:
         return audio.read()
@@ -397,15 +398,23 @@ def getSentiments(detailed: bool) -> list:
 """
 
 
+def get_keywords_from_text(text: str) -> typing.List[str]:
+    """Extract keywords out of text."""
+    rake_nltk_var = rake_nltk.Rake()
+    rake_nltk_var.extract_keywords_from_text(text)
+    return rake_nltk_var.get_ranked_phrases()
+
+
 app = fastapi.FastAPI()
 
 nltk.download("punkt")
 nltk.download("stopwords")
+nltk.download("wordnet")
 
 
 # https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
 @app.middleware("http")
-async def addSecureHeaders(
+async def add_secure_headers(
     request: fastapi.Request, call_next
 ) -> fastapi.Response:
     """Adds security headers proposed by OWASP."""
@@ -425,35 +434,50 @@ def pdf_ep(
 ):
     """The pdf manupulation endpoint."""
     if feat == "":
-        text = pdfToText(url)
+        text = pdf_to_text(url)
         if summarize:
-            text = summarizeText_v2(text)
+            text = summarize_text_v2(text)
         if audio:
-            audio_path = textToAudio(text)
+            audio_path = text_to_audio(text)
             return fastapi.Response(
-                getAudioFromFile(audio_path) if audio_path != "" else "",
+                get_audio_from_file(audio_path) if audio_path != "" else "",
                 media_type="audio/mpeg",
             )
         return {
             "Content-Type": "application/json",
-            "isOk": True if text != "" else False,
+            "isOk": bool(text),
             "result": text,
         }
     elif feat == "refs":
-        refs = extractRefs(url)
+        refs = extract_refs(url)
         return {
             "Content-Type": "application/json",
-            "isOk": True if refs is not None else False,
+            "isOk": bool(refs),
             "result": refs,
+        }
+    elif feat == "keyword":
+        text = pdf_to_text(url)
+        keywords = get_keywords_from_text(text)
+        return {
+            "Content-Type": "application/json",
+            "isOk": bool(keywords),
+            "result": keywords,
+        }
+    else:
+        return {
+            "Content-Type": "application/json",
+            "isOk": False,
+            "result": "unknown feature requested",
         }
 
 
+# TODO- currently not working
 @app.get("/mila/tika")
 def pdf_to_audio_ep(url: str):
     """Turns a pdf into an audiofile."""
-    audio_path = pdfToVoice()
+    audio_path = pdf_to_voice()
     return fastapi.Response(
-        getAudioFromFile(audio_path) if audio_path != "" else "",
+        get_audio_from_file(audio_path) if audio_path != "" else "",
         media_type="audio/mpeg",
     )
 
@@ -464,7 +488,7 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
     result = getRequirements(url, sourcetype)
     return {
         "Content-Type": "application/json",
-        "isOK": True if result is not None else False,
+        "isOK": bool(result),
         "reqs": result,
     }
 
@@ -474,15 +498,15 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     """Search and summarizes from wikipedia."""
     text = searchWikipedia(term, summary)
     if audio:
-        audio_path = textToAudio(text)
+        audio_path = text_to_audio(text)
         return fastapi.Response(
-            getAudioFromFile(audio_path) if audio_path != "" else "",
+            get_audio_from_file(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
     else:
         return {
             "Content-Type": "application/json",
-            "isOK": True if text != "" else False,
+            "isOK": bool(text),
             "audio": "",
             "text": text,
         }
@@ -493,16 +517,16 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     """Summarize and turn the summary into audio."""
     text = summarizeLinkToAudio(url, summary)
     if audio:
-        audio_path = textToAudio(text)
+        audio_path = text_to_audio(text)
         print(audio_path)
         return fastapi.Response(
-            getAudioFromFile(audio_path) if audio_path != "" else "",
+            get_audio_from_file(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
     else:
         return {
             "Content-Type": "application/json",
-            "isOK": True if text != "" else False,
+            "isOK": bool(text),
             # "audio": "",
             "text": text,
         }
@@ -513,16 +537,16 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
     """Extract all the urls and then summarize and turn into audio."""
     text = summarizeLinksToAudio(url, summary)
     if audio:
-        audio_path = textToAudio(text)
+        audio_path = text_to_audio(text)
         print(audio_path)
         return fastapi.Response(
-            getAudioFromFile(audio_path) if audio_path != "" else "",
+            get_audio_from_file(audio_path) if audio_path != "" else "",
             media_type="audio/mpeg",
         )
     else:
         return {
             "Content-Type": "application/json",
-            "isOK": True if text != "" else False,
+            "isOK": bool(text),
             "audio": "",
             "text": text,
         }
