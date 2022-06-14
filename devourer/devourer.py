@@ -10,15 +10,15 @@ import string
 import tempfile
 import typing
 
-import bs4
+import bs4  # type:ignore
 import fastapi
-import gtts
-import newspaper
-import nltk
-import readability
-import refextract
+import gtts  # type:ignore
+import newspaper  # type:ignore
+import nltk  # type:ignore
+import readability  # type:ignore
+import refextract  # type:ignore
 import requests
-import tika
+import tika  # type:ignore
 import transformers
 from tika import parser as tparser
 
@@ -150,6 +150,7 @@ def extractRequirements(textBody: str) -> list:
 
 
 def extractRefs(url: str) -> list:
+    """Extract the references from an article."""
     refs = list()
     try:
         refs = refextract.extract_references_from_url(url)
@@ -226,7 +227,44 @@ def summarizeText(text: str) -> str:
 
 
 def summarizeText_v2(text: str) -> str:
-    pass
+    """Text summarization using nltk."""
+    stop_words = set(nltk.corpus.stopwords.words("english"))
+    words = nltk.tokenize.word_tokenize(text)
+    freq_table: typing.Dict[str, int] = {}
+
+    for word in words:
+        word = word.lower()
+        if word in stop_words:
+            continue
+        if word in freq_table:
+            freq_table[word] += 1
+        else:
+            freq_table[word] = 1
+
+    sentences = nltk.tokenize.sent_tokenize(text)
+    sentence_value: typing.Dict[str, int] = {}
+
+    for sentence in sentences:
+        for word, freq in freq_table.items():
+            if word in sentence.lower():
+                if sentence in sentence_value:
+                    sentence_value[sentence] += freq
+                else:
+                    sentence_value[sentence] = freq
+
+    sum_values: float = 0
+    for sentence, value in sentence_value.items():
+        sum_values += value
+
+    average: float = int(sum_values / len(sentence_value))
+    summary: str = ""
+    for sentence in sentences:
+        if (sentence in sentence_value) and (
+            sentence_value[sentence] > (1.2 * average)
+        ):
+            summary += " " + sentence
+
+    return summary
 
 
 def textToAudio(text: str) -> str:
@@ -317,7 +355,7 @@ def summarizeLinksToAudio(url: str, summary: str) -> str:
 
 def searchWikipedia(search_term: str, summary: str) -> str:
     """Search wikipedia for a string and return the url.
-    reference: https://www.mediawiki.org/wiki/API:Opensearch
+    reference: https://www.mediawiki.org/wiki/API:Opensearch.
     """
     result = str()
     try:
@@ -362,6 +400,7 @@ def getSentiments(detailed: bool) -> list:
 app = fastapi.FastAPI()
 
 nltk.download("punkt")
+nltk.download("stopwords")
 
 
 # https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
@@ -369,7 +408,7 @@ nltk.download("punkt")
 async def addSecureHeaders(
     request: fastapi.Request, call_next
 ) -> fastapi.Response:
-    """adds security headers proposed by OWASP."""
+    """Adds security headers proposed by OWASP."""
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["Content-Security-Policy"] = "default-src-https"
@@ -384,11 +423,11 @@ async def addSecureHeaders(
 def pdf_ep(
     url: str, feat: str = "", audio: bool = False, summarize: bool = False
 ):
-    """the pdf manupulation endpoint."""
+    """The pdf manupulation endpoint."""
     if feat == "":
         text = pdfToText(url)
         if summarize:
-            text = summarizeText(text)
+            text = summarizeText_v2(text)
         if audio:
             audio_path = textToAudio(text)
             return fastapi.Response(
@@ -411,7 +450,7 @@ def pdf_ep(
 
 @app.get("/mila/tika")
 def pdf_to_audio_ep(url: str):
-    """turns a pdf into an audiofile."""
+    """Turns a pdf into an audiofile."""
     audio_path = pdfToVoice()
     return fastapi.Response(
         getAudioFromFile(audio_path) if audio_path != "" else "",
@@ -421,7 +460,7 @@ def pdf_to_audio_ep(url: str):
 
 @app.get("/mila/reqs")
 def extract_reqs_ep(url: str, sourcetype: str = "html"):
-    """extracts the requirements from a given url."""
+    """Extracts the requirements from a given url."""
     result = getRequirements(url, sourcetype)
     return {
         "Content-Type": "application/json",
@@ -432,7 +471,7 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
 
 @app.get("/mila/wiki")
 def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
-    """search and summarizes from wikipedia."""
+    """Search and summarizes from wikipedia."""
     text = searchWikipedia(term, summary)
     if audio:
         audio_path = textToAudio(text)
@@ -451,7 +490,7 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
 
 @app.get("/mila/summ")
 def summarize_ep(url: str, summary: str = "none", audio: bool = False):
-    """summarize and turn the summary into audio."""
+    """Summarize and turn the summary into audio."""
     text = summarizeLinkToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
@@ -471,7 +510,7 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
 
 @app.get("/mila/mila")
 def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
-    """extract all the urls and then summarize and turn into audio."""
+    """Extract all the urls and then summarize and turn into audio."""
     text = summarizeLinksToAudio(url, summary)
     if audio:
         audio_path = textToAudio(text)
@@ -491,11 +530,13 @@ def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
 
 @app.get("/mila/health")
 def health_ep():
+    """The health endpoint."""
     return {"Content-Type": "application/json", "isOK": True}
 
 
 @app.get("/mila/robots.txt")
 def robots_ep():
+    """The robots endpoint."""
     return {
         "Content-Type": "apllication/json",
         "User-Agents": "*",
