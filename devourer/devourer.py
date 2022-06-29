@@ -5,13 +5,12 @@ import contextlib
 import datetime
 import logging
 import os
-import random
-import re
-import string
+# import re
+# import string
 import tempfile
 import typing
 
-import bs4  # type:ignore
+# import bs4  # type:ignore
 import fastapi
 import gtts  # type:ignore
 import newspaper  # type:ignore
@@ -19,10 +18,12 @@ import nltk  # type:ignore
 import rake_nltk  # type:ignore
 import readability  # type:ignore
 import refextract  # type:ignore
-import requests
-import tika  # type:ignore
-import transformers
-from tika import parser as tparser
+import requests  # type:ignore
+# import tika  # type:ignore
+# import transformers
+from tika import parser as tparser  # type:ignore
+
+# import random
 
 
 # FIXME-maybe actually really do some logging
@@ -46,8 +47,8 @@ def simple_get(url: str) -> bytes:
                 content = resp.content
     except requests.exceptions.RequestException as e:
         log_error(f"Error during requests to {0} : {1}".format(url, str(e)))
-    finally:
-        return content
+
+    return content
 
 
 def get_with_params(url: str, params: dict) -> typing.Optional[dict]:
@@ -64,35 +65,35 @@ def get_with_params(url: str, params: dict) -> typing.Optional[dict]:
         return None
 
 
-def get_rand_str(count):
-    """Return a random string of the given length."""
-    return "".join([random.choice(string.lowercase) for i in range(count)])
+# def get_rand_str(count):
+#     """Return a random string of the given length."""
+#     return "".join([random.choice(str.lower) for i in range(count)])
 
 
-def get_urls(source: str, summary: str) -> dict:
-    """Extracts the urls from a website."""
-    result = {}
-    raw_ml = simple_get(source)
-    ml = bs4.BeautifulSoup(raw_ml, "lxml")
+# def get_urls(source: str, summary: str) -> dict:
+#     """Extracts the urls from a website."""
+#     result = {}
+#     raw_ml = simple_get(source)
+#     ml = bs4.BeautifulSoup(raw_ml, "lxml")
 
-    rand_tmp = "/tmp/" + get_rand_str(20)
-    ml_str = repr(ml)
-    tmp = open(rand_tmp, "w", encoding="utf-8")
-    tmp.write(ml_str)
-    tmp.close()
-    tmp = open(rand_tmp, "r", encoding="utf-8")
-    url_list = []
-    for line in tmp:
-        url = re.findall(
-            "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|"
-            r"(?:%[0-9a-fA-F][0-9a-fA-F]))+",
-            line,
-        )
-        url_list += url
-    for elem in url_list:
-        result[elem] = elem
-    tmp.close()
-    return result
+#     rand_tmp = "/tmp/" + get_rand_str(20)
+#     ml_str = repr(ml)
+#     tmp = open(rand_tmp, "w", encoding="utf-8")
+#     tmp.write(ml_str)
+#     tmp.close()
+#     tmp = open(rand_tmp, "r", encoding="utf-8")
+#     url_list = []
+#     for line in tmp:
+#         url = re.findall(
+#             "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|"
+#             r"(?:%[0-9a-fA-F][0-9a-fA-F]))+",
+#             line,
+#         )
+#         url_list += url
+#     for elem in url_list:
+#         result[elem] = elem
+#     tmp.close()
+#     return result
 
 
 def config_news(config: newspaper.Config) -> None:
@@ -101,6 +102,10 @@ def config_news(config: newspaper.Config) -> None:
     config.keep_article_html = True
     config.memoize_articles = False
     config.browser_user_agent = "Chrome/91.0.4464.5"
+
+
+newspaper_config = newspaper.Config()
+config_news(newspaper_config)
 
 
 def sanitize_text(text: str) -> str:
@@ -112,18 +117,18 @@ def sanitize_text(text: str) -> str:
 
 
 # FIXME-have to decide whether to use files or urls
-def pdf_to_voice() -> str:
-    """Main function for converting a pdf to an mp3."""
-    outfile = str()
-    try:
-        raw_text = tika.parser.from_file()
-        tts = gtts.gTTS(raw_text["content"])
-        outfile = get_rand_str(20) + ".mp3"
-        tts.save(outfile)
-    except Exception as e:
-        logging.exception(e)
-    finally:
-        return outfile
+# def pdf_to_voice() -> str:
+#     """Main function for converting a pdf to an mp3."""
+#     outfile = str()
+#     try:
+#         raw_text = tika.parser.from_file()
+#         tts = gtts.gTTS(raw_text["content"])
+#         outfile = get_rand_str(20) + ".mp3"
+#         tts.save(outfile)
+#     except Exception as e:
+#         logging.exception(e)
+#     finally:
+#         return outfile
 
 
 def extract_requirements(text_body: str) -> list:
@@ -158,8 +163,7 @@ def extract_refs(url: str) -> list:
         return refs
     except Exception as e:
         logging.exception(e)
-    finally:
-        return refs
+    return refs
 
 
 def pdf_to_text(url: str) -> str:
@@ -176,52 +180,50 @@ def pdf_to_text(url: str) -> str:
                 )
     except Exception as e:
         logging.exception(e)
-    finally:
-        if "content" in tika_result:
-            return sanitize_text(tika_result["content"])
-        return ""
+    if "content" in tika_result:
+        return sanitize_text(tika_result["content"])
+    return ""
 
 
 # TODO-very performance-intensive
-def summarize_text(text: str) -> str:
-    """Summarize the given text using bart."""
-    result = str()
-    # TODO-move me later
-    transformers_summarizer = transformers.pipeline("summarization")
-    try:
-        sentences = text.split(".")
-        current_chunk = 0
-        max_chunk = 500
-        chunks: list = []
+# def summarize_text(text: str) -> str:
+#     """Summarize the given text using bart."""
+#     result = str()
+#     # TODO-move me later
+#     transformers_summarizer = transformers.pipeline("summarization")
+#     try:
+#         sentences = text.split(".")
+#         current_chunk = 0
+#         max_chunk = 500
+#         chunks: list = []
 
-        for sentence in sentences:
-            if len(chunks) == current_chunk + 1:
-                if (
-                    len(chunks[current_chunk]) + len(sentence.split(" "))
-                    <= max_chunk
-                ):
-                    chunks[current_chunk].extend(sentence.split(" "))
-                else:
-                    current_chunk = +1
-                    chunks.append(sentence.split(" "))
-            else:
-                chunks.append(sentence.split(" "))
-        print(chunks)
+#         for sentence in sentences:
+#             if len(chunks) == current_chunk + 1:
+#                 if (
+#                     len(chunks[current_chunk]) + len(sentence.split(" "))
+#                     <= max_chunk
+#                 ):
+#                     chunks[current_chunk].extend(sentence.split(" "))
+#                 else:
+#                     current_chunk = +1
+#                     chunks.append(sentence.split(" "))
+#             else:
+#                 chunks.append(sentence.split(" "))
+#         print(chunks)
 
-        for i, chunk in enumerate(chunks):
-            chunks[i] = "".join(chunk)
-        print(chunks)
+#         for i, chunk in enumerate(chunks):
+#             chunks[i] = "".join(chunk)
+#         print(chunks)
 
-        summaries = transformers_summarizer(
-            chunks, max_length=50, min_length=30, do_sample=False
-        )
+#         summaries = transformers_summarizer(
+#             chunks, max_length=50, min_length=30, do_sample=False
+#         )
 
-        result = "".join([summary["summary_text"] for summary in summaries])
-        print(result)
-    except Exception as e:
-        logging.exception(e)
-    finally:
-        return result
+#         result = "".join([summary["summary_text"] for summary in summaries])
+#         print(result)
+#     except Exception as e:
+#         logging.exception(e)
+#     return result
 
 
 def summarize_text_v2(text: str) -> str:
@@ -275,19 +277,20 @@ def text_to_audio(text: str) -> str:
         path = os.environ["AUDIO_DUMP_DIR"] + "/" + time_str + ".mp3"
     except Exception as e:
         logging.exception(e)
-    finally:
-        return path
+    return path
 
 
 def get_requirements(url: str, sourcetype: str) -> list:
     """Runs the single-link main function."""
-    result = str()
+    # result = str()
     results = []
     try:
         if sourcetype == "html":
-            parser = newspaper.build(url)
+            parser = newspaper.build(url, newspaper_config)
             for article in parser.articles:
-                art = newspaper.Article(article.url)
+                art = newspaper.Article(
+                    config=newspaper_config, url=article.url
+                )
                 art.download()
                 art.parse()
                 art.nlp()
@@ -301,19 +304,18 @@ def get_requirements(url: str, sourcetype: str) -> list:
             results = extract_requirements(bytes_text.decode("utf-8"))
     except Exception as e:
         logging.exception(e)
-    finally:
-        print(result)
-        # result = "".join(results) + "\n"
-        # return result
-        return results
+    # print(result)
+    # result = "".join(results) + "\n"
+    # return result
+    return results
 
 
-# FIXME-summary=bart doesnt work
+# TODO-summary=bart doesnt work
 def summarize_link_to_audio(url: str, summary: str) -> str:
     """Summarizes the text inside a given url into audio."""
     result = str()
     try:
-        article = newspaper.Article(url)
+        article = newspaper.Article(config=newspaper_config, url=url)
         article.download()
         article.parse()
         if summary == "newspaper":
@@ -321,34 +323,32 @@ def summarize_link_to_audio(url: str, summary: str) -> str:
             result = article.summary
         elif summary == "none":
             result = article.text
-        elif summary == "bart":
-            result = article.text
+        elif summary == "nltk":
+            result = summarize_text_v2(article.text)
         else:
             print("invalid option for summary type.")
         if result != "":
             result = sanitize_text(result)
     except Exception as e:
         logging.exception(e)
-    finally:
-        return result
+    return result
 
 
-# FIXME-change my name
-def summarize_links_to_audio(origin: str, summary: str) -> str:
-    """Summarize a list of urls into audio files."""
-    results = []
-    result = str()
-    try:
-        config = newspaper.Config()
-        config_news(config)
-        urls = get_urls(origin, summary)
-        for url in urls:
-            results.append(summarize_link_to_audio(url, summary))
-    except Exception as e:
-        logging.exception(e)
-    finally:
-        result = "".join(results)
-        return result
+# def summarize_links_to_audio(origin: str, summary: str) -> str:
+#     """Summarize a list of urls into audio files."""
+#     results = []
+#     result = str()
+#     try:
+#         config = newspaper.Config()
+#         config_news(config)
+#         urls = get_urls(origin, summary)
+#         for url in urls:
+#             results.append(summarize_link_to_audio(url, summary))
+#     except Exception as e:
+#         logging.exception(e)
+#     finally:
+#         result = "".join(results)
+#         return result
 
 
 def search_wikipedia(search_term: str, summary: str) -> str:
@@ -372,8 +372,7 @@ def search_wikipedia(search_term: str, summary: str) -> str:
             result = sanitize_text(result)
     except Exception as e:
         logging.exception(e)
-    finally:
-        return result
+    return result
 
 
 def get_audio_from_file(audio_path: str) -> bytes:
@@ -383,16 +382,16 @@ def get_audio_from_file(audio_path: str) -> bytes:
 
 
 # TODO- implement me
-def get_sentiments(detailed: bool) -> list:
-    """Sentiments analysis."""
-    results = []
-    source = "https://github.com/coinpride/CryptoList"
-    urls = simple_get(source)
-    classifier = transformers.pipeline("sentiment-analysis")
-    for url in urls:
-        req_result = simple_get(url)
-        results.append(classifier(req_result))
-    return results
+# def get_sentiments(detailed: bool) -> list:
+#     """Sentiments analysis."""
+#     results = []
+#     source = "https://github.com/coinpride/CryptoList"
+#     urls = simple_get(source)
+#     classifier = transformers.pipeline("sentiment-analysis")
+#     for url in urls:
+#         req_result = simple_get(url)
+#         results.append(classifier(req_result))
+#     return results
 
 
 def get_keywords_from_text(text: str) -> typing.List[str]:
@@ -445,14 +444,14 @@ def pdf_ep(
             "isOk": bool(text),
             "result": text,
         }
-    elif feat == "refs":
+    if feat == "refs":
         refs = extract_refs(url)
         return {
             "Content-Type": "application/json",
             "isOk": bool(refs),
             "result": refs,
         }
-    elif feat == "keyword":
+    if feat == "keyword":
         text = pdf_to_text(url)
         keywords = get_keywords_from_text(text)
         return {
@@ -460,23 +459,22 @@ def pdf_ep(
             "isOk": bool(keywords),
             "result": keywords,
         }
-    else:
-        return {
-            "Content-Type": "application/json",
-            "isOk": False,
-            "result": "unknown feature requested",
-        }
+    return {
+        "Content-Type": "application/json",
+        "isOk": False,
+        "result": "unknown feature requested",
+    }
 
 
 # TODO- currently not working
-@app.get("/mila/tika")
-def pdf_to_audio_ep(url: str):
-    """Turns a pdf into an audiofile."""
-    audio_path = pdf_to_voice()
-    return fastapi.Response(
-        get_audio_from_file(audio_path) if audio_path != "" else "",
-        media_type="audio/mpeg",
-    )
+# @app.get("/mila/tika")
+# def pdf_to_audio_ep(url: str):
+#     """Turns a pdf into an audiofile."""
+#     audio_path = pdf_to_voice()
+#     return fastapi.Response(
+#         get_audio_from_file(audio_path) if audio_path != "" else "",
+#         media_type="audio/mpeg",
+#     )
 
 
 @app.get("/mila/reqs")
@@ -522,28 +520,27 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     return {
         "Content-Type": "application/json",
         "isOK": bool(text),
-        # "audio": "",
         "text": text,
     }
 
 
-@app.get("/mila/mila")
-def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
-    """Extract all the urls and then summarize and turn into audio."""
-    text = summarize_links_to_audio(url, summary)
-    if audio:
-        audio_path = text_to_audio(text)
-        print(audio_path)
-        return fastapi.Response(
-            get_audio_from_file(audio_path) if audio_path != "" else "",
-            media_type="audio/mpeg",
-        )
-    return {
-        "Content-Type": "application/json",
-        "isOK": bool(text),
-        "audio": "",
-        "text": text,
-    }
+# @app.get("/mila/mila")
+# def mila_ep(url: str, summary: str = "newspaper", audio: bool = False):
+#     """Extract all the urls and then summarize and turn into audio."""
+#     text = summarize_links_to_audio(url, summary)
+#     if audio:
+#         audio_path = text_to_audio(text)
+#         print(audio_path)
+#         return fastapi.Response(
+#             get_audio_from_file(audio_path) if audio_path != "" else "",
+#             media_type="audio/mpeg",
+#         )
+#     return {
+#         "Content-Type": "application/json",
+#         "isOK": bool(text),
+#         "audio": "",
+#         "text": text,
+#     }
 
 
 @app.get("/mila/health")

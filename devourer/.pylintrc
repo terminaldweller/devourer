@@ -1,2 +1,5 @@
 [BASIC]
 good-names=e,i,j,k
+
+[MESSAGES CONTROL]
+disable=w0703
