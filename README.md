@@ -8,3 +8,6 @@ Right now it can get text out of certain formats, summarize them or not and turn
 There is a little feature that searches for a term  on wikipedia and one that extracts requirements from RFCs.<br/>
 
 To see what endpoints are present and how to use them or interact with them go to `/docs`. Devourer is powered by fastapi. Everything is in its default location.<br/>
+
+There is a live instance on https://mila.terminaldweller.com/mila.<br/>
+You can look at the docs [here](https://mila.terminalweller.com/docs).<br/>
