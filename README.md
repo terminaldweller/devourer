@@ -7,4 +7,4 @@ Devourer is meant to be a sort of a knowledge aggregator though it has quite a l
 Right now it can get text out of certain formats, summarize them or not and turn them into audio or not.<br/>
 There is a little feature that searches for a term  on wikipedia and one that extracts requirements from RFCs.<br/>
 
-To see what endpoints are present and how to use them or interact with them go to `/doc`. Devourer is powered by fastapi. Everything is in its default location.<br/>
+To see what endpoints are present and how to use them or interact with them go to `/docs`. Devourer is powered by fastapi. Everything is in its default location.<br/>
