@@ -13,7 +13,7 @@ To see what endpoints are present and how to use them or interact with them go t
 
 ## Live Instance
 There is a live instance on https://mila.terminaldweller.com/mila.<br/>
-You can look at the docs [here](https://mila.terminalweller.com/docs).<br/>
+You can look at the docs [here](https://mila.terminaldweller.com/docs).<br/>
 
 ## How to Run
 Run one of the two compose files. The test compose file uses self-signed certificates for local testing since devourer only supports https.<br/>
