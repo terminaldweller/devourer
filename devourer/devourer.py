@@ -27,6 +27,37 @@ from tika import parser as tparser  # type:ignore
 
 # import random
 
+description = """
+Devourer is a lightweight knowledge aggregator.</br>
+Right now though, its more of
+a personal assistant. It cant extract text and summarize it and
+ turn it into audio.<br/>
+"""
+tags_metadata = [
+    {
+        "name": "/mila/pdf",
+        "description": "The PDF endpoint. It accepts urls that contain a "
+        "PDF as input.",
+    },
+    {
+        "name": "/mila/reqs",
+        "description": "This endpoint accepts a link to a RFC and returns"
+        " the requirements it extracts from it.",
+    },
+    {
+        "name": "/mila/wiki",
+        "description": "Searches for the given term on wikipedia.",
+    },
+    {
+        "name": "/mila/summ",
+        "description": "The summary endpoint accepts a url as input"
+        " that contains an html page. devourer extracts the"
+        " __important__ text out of the page and then will either"
+        " summarize and turn into audio.",
+    },
+    {"name": "/mila/health", "description": "The health endpoint."},
+]
+
 
 # FIXME-maybe actually really do some logging
 def log_error(err: str) -> None:
@@ -403,7 +434,20 @@ def get_keywords_from_text(text: str) -> typing.List[str]:
     return rake_nltk_var.get_ranked_phrases()
 
 
-app = fastapi.FastAPI()
+app = fastapi.FastAPI(
+    title="Devourer",
+    description=description,
+    contact={
+        "name": "farzad sadeghi",
+        "url": "https://github.com/terminaldweller/devourer",
+        "email": "thabogre@gmail.com",
+    },
+    license_info={
+        "name": "GPL v3.0",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.en.html",
+    },
+    openapi_tags=tags_metadata,
+)
 
 nltk.download("punkt")
 nltk.download("stopwords")
@@ -426,7 +470,7 @@ async def add_secure_headers(
     return response
 
 
-@app.get("/mila/pdf")
+@app.get("/mila/pdf", tags=["/mila/pdf"])
 def pdf_ep(
     url: str, feat: str = "", audio: bool = False, summarize: bool = False
 ):
@@ -479,7 +523,7 @@ def pdf_ep(
 #     )
 
 
-@app.get("/mila/reqs")
+@app.get("/mila/reqs", tags=["/mila/reqs"])
 def extract_reqs_ep(url: str, sourcetype: str = "html"):
     """Extracts the requirements from a given url."""
     result = get_requirements(url, sourcetype)
@@ -490,7 +534,7 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
     }
 
 
-@app.get("/mila/wiki")
+@app.get("/mila/wiki", tags=["/mila/wiki"])
 def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     """Search and summarizes from wikipedia."""
     text = search_wikipedia(term, summary)
@@ -508,7 +552,7 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     }
 
 
-@app.get("/mila/summ")
+@app.get("/mila/summ", tags=["/mila/summ"])
 def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     """Summarize and turn the summary into audio."""
     text = summarize_link_to_audio(url, summary)
@@ -545,7 +589,7 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
 #     }
 
 
-@app.get("/mila/health")
+@app.get("/mila/health", tags=["/mila/health"])
 def health_ep():
     """The health endpoint."""
     return {"Content-Type": "application/json", "isOK": True}
