@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+"""Cargo is meant to server as a file/server downloader service."""
 import http.server
 import os
 import socketserver
+
 import huggingface_hub as hh
 
 

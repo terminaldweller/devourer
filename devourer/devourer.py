@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import typing
+
 import fastapi
 import gtts  # type:ignore
 import newspaper  # type:ignore
@@ -15,18 +16,15 @@ import rake_nltk  # type:ignore
 import readability  # type:ignore
 import refextract  # type:ignore
 import requests  # type:ignore
-
 from tika import parser as tparser  # type:ignore
 
-# import random
-
-description = """
+MODULE_DESCRIPTION = """
 Devourer is a lightweight knowledge aggregator.</br>
 Right now though, its more of
 a personal assistant. It cant extract text and summarize it and
  turn it into audio.<br/>
 """
-tags_metadata = [
+TAGS_METADATA = [
     {
         "name": "/mila/pdf",
         "description": "The PDF endpoint. It accepts urls that contain a "
@@ -34,8 +32,8 @@ tags_metadata = [
     },
     {
         "name": "/mila/reqs",
-        "description": "This endpoint accepts a link to a RFC and returns"
-        " the requirements it extracts from it.",
+        "description": "This endpoint accepts a link to a RFC and returns "
+        "the requirements it extracts from it.",
     },
     {
         "name": "/mila/wiki",
@@ -43,16 +41,16 @@ tags_metadata = [
     },
     {
         "name": "/mila/summ",
-        "description": "The summary endpoint accepts a url as input"
-        " that contains an html page. devourer extracts the"
-        " __important__ text out of the page and then will either"
-        " summarize and turn into audio.",
+        "description": "The summary endpoint accepts a url as input "
+        "that contains an html page. devourer extracts the "
+        "__important__ text out of the page and then will either "
+        "summarize and turn into audio.",
     },
     {"name": "/mila/health", "description": "The health endpoint."},
 ]
 
 
-# FIXME-maybe actually really do some logging
+# TODO-maybe actually really do some logging
 def log_error(err: str) -> None:
     """Logs the errors."""
     logging.exception(err)
@@ -99,8 +97,8 @@ def config_news(config: newspaper.Config) -> None:
     config.browser_user_agent = "Chrome/91.0.4464.5"
 
 
-newspaper_config = newspaper.Config()
-config_news(newspaper_config)
+NEWSPAPER_CONFIG = newspaper.Config()
+config_news(NEWSPAPER_CONFIG)
 
 
 def sanitize_text(text: str) -> str:
@@ -113,6 +111,7 @@ def sanitize_text(text: str) -> str:
 
 def extract_requirements(text_body: str) -> list:
     """Extract the sentences containing the keywords that denote a requirement.
+
     the keywords are baed on ISO/IEC directives, part 2:
     https://www.iso.org/sites/directives/current/part2/index.xhtml
     """
@@ -263,10 +262,10 @@ def get_requirements(url: str, sourcetype: str) -> list:
     results = []
     try:
         if sourcetype == "html":
-            parser = newspaper.build(url, newspaper_config)
+            parser = newspaper.build(url, NEWSPAPER_CONFIG)
             for article in parser.articles:
                 art = newspaper.Article(
-                    config=newspaper_config, url=article.url
+                    config=NEWSPAPER_CONFIG, url=article.url
                 )
                 art.download()
                 art.parse()
@@ -285,7 +284,7 @@ def summarize_link_to_audio(url: str, summary: str) -> str:
     """Summarizes the text inside a given url into audio."""
     result = str()
     try:
-        article = newspaper.Article(config=newspaper_config, url=url)
+        article = newspaper.Article(config=NEWSPAPER_CONFIG, url=url)
         article.download()
         article.parse()
         if summary == "newspaper":
@@ -306,6 +305,7 @@ def summarize_link_to_audio(url: str, summary: str) -> str:
 
 def search_wikipedia(search_term: str, summary: str) -> str:
     """Search wikipedia for a string and return the url.
+
     reference: https://www.mediawiki.org/wiki/API:Opensearch.
     """
     result = str()
@@ -343,7 +343,7 @@ def get_keywords_from_text(text: str) -> typing.List[str]:
 
 app = fastapi.FastAPI(
     title="Devourer",
-    description=description,
+    description=MODULE_DESCRIPTION,
     contact={
         "name": "farzad sadeghi",
         "url": "https://github.com/terminaldweller/devourer",
@@ -353,7 +353,7 @@ app = fastapi.FastAPI(
         "name": "GPL v3.0",
         "url": "https://www.gnu.org/licenses/gpl-3.0.en.html",
     },
-    openapi_tags=tags_metadata,
+    openapi_tags=TAGS_METADATA,
 )
 
 nltk.download("punkt")
