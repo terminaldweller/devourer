@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import http.server
-import huggingface_hub as hh
-import socketserver
 import os
+import socketserver
+import huggingface_hub as hh
 
 
 # https://huggingface.co/docs/huggingface_hub/how-to-downstream
 def download(path: str = ".") -> None:
+    """Download the required models from huggingface."""
     bart_pretrained = hh.hf_hub_url(
         "sshleifer/distilbart-cnn-12-6", filename="config.json"
     )
@@ -14,11 +15,12 @@ def download(path: str = ".") -> None:
 
 
 def serve() -> None:
+    """Startup a simple http file server."""
     handler = http.server.SimpleHTTPRequestHandler
-    PORT = os.environ["SERVER_PORT"]
+    port_number = os.environ["SERVER_PORT"]
 
     download(os.environ["SERVER_VAULT"])
-    with socketserver.TCPServer(("", int(PORT)), handler) as httpd:
+    with socketserver.TCPServer(("", int(port_number)), handler) as httpd:
         httpd.serve_forever()
 
 
