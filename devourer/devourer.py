@@ -21,14 +21,14 @@ from tika import parser as tparser  # type:ignore
 MODULE_DESCRIPTION = """
 Devourer is a lightweight knowledge aggregator.</br>
 Right now though, its more of
-a personal assistant. It cant extract text and summarize it and
+a personal assistant. It can extract text and summarize it and
  turn it into audio.<br/>
 """
 TAGS_METADATA = [
     {
         "name": "/mila/pdf",
         "description": "The PDF endpoint. It accepts urls that contain a "
-        "PDF as input.",
+        "PDF as input. It can summarize the test and turn them into audio.",
     },
     {
         "name": "/mila/reqs",
@@ -37,14 +37,15 @@ TAGS_METADATA = [
     },
     {
         "name": "/mila/wiki",
-        "description": "Searches for the given term on wikipedia.",
+        "description": "Searches for the given term on wikipedia. Can "
+        "optionally summarize the result and turn it into audio.",
     },
     {
         "name": "/mila/summ",
         "description": "The summary endpoint accepts a url as input "
         "that contains an html page. devourer extracts the "
         "__important__ text out of the page and then will either "
-        "summarize and turn into audio.",
+        "summarize and optionally turn it into audio.",
     },
     {"name": "/mila/health", "description": "The health endpoint."},
 ]
