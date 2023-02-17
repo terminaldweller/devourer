@@ -12,9 +12,9 @@ ENV PYTHONUNBUFFERED=1 \
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
 FROM python-base as builder-base
-ENV POETRY_VERSION=1.0.0
+ENV POETRY_VERSION=1.3.2
 RUN apt update && apt install -y --no-install-recommends curl build-essential
-RUN curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+RUN curl -sSL https://install.python-poetry.org | python -
 WORKDIR $PYSETUP_PATH
 COPY ./pyproject.toml ./
 RUN poetry install --no-dev

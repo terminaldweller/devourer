@@ -378,7 +378,7 @@ async def add_secure_headers(
     return response
 
 
-@app.get("/mila/pdf", tags=["/mila/pdf"])
+@app.get("/mila/pdf", tags=["/mila/v1/pdf"])
 def pdf_ep(
     url: str, feat: str = "", audio: bool = False, summarize: bool = False
 ):
@@ -420,7 +420,7 @@ def pdf_ep(
     }
 
 
-@app.get("/mila/reqs", tags=["/mila/reqs"])
+@app.get("/mila/reqs", tags=["/mila/v1/reqs"])
 def extract_reqs_ep(url: str, sourcetype: str = "html"):
     """Extracts the requirements from a given url."""
     result = get_requirements(url, sourcetype)
@@ -431,7 +431,7 @@ def extract_reqs_ep(url: str, sourcetype: str = "html"):
     }
 
 
-@app.get("/mila/wiki", tags=["/mila/wiki"])
+@app.get("/mila/wiki", tags=["/mila/v1/wiki"])
 def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     """Search and summarizes from wikipedia."""
     text = search_wikipedia(term, summary)
@@ -449,7 +449,7 @@ def wiki_search_ep(term: str, summary: str = "none", audio: bool = False):
     }
 
 
-@app.get("/mila/summ", tags=["/mila/summ"])
+@app.get("/mila/summ", tags=["/mila/v1/summ"])
 def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     """Summarize and turn the summary into audio."""
     text = summarize_link_to_audio(url, summary)
@@ -467,7 +467,7 @@ def summarize_ep(url: str, summary: str = "none", audio: bool = False):
     }
 
 
-@app.get("/mila/health", tags=["/mila/health"])
+@app.get("/mila/health", tags=["/mila/v1/health"])
 def health_ep():
     """The health endpoint."""
     return {"Content-Type": "application/json", "isOK": True}
