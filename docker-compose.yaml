@@ -25,6 +25,8 @@ services:
     volumes:
       - devourer-nltk-data:/root/nltk_data/
       - devourer-hg-cache:/huggingface/cache/
+      - /etc/letsencrypt/live/mila.terminaldweller.com/privkey.pem:/etc/letsencrypt/live/mila.terminaldweller.com/privkey.pem
+      - /etc/letsencrypt/live/mila.terminaldweller.com/fullchain.pem:/etc/letsencrypt/live/mila.terminaldweller.com/fullchain.pem
   tika:
     image: apache/tika:2.0.0
     networks:

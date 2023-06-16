@@ -4,8 +4,8 @@ if [ "$SERVER_DEPLOYMENT_TYPE" = "deployment" ]; then
   uvicorn devourer:app \
     --host 0.0.0.0 \
     --port 80 \
-    --ssl-certfile /certs/server.cert \
-    --ssl-keyfile /certs/server.key \
+    --ssl-certfile /etc/letsencrypt/live/mila.terminaldweller.com/fullchain.pem \
+    --ssl-keyfile /etc/letsencrypt/live/mila.terminaldweller.com/privkey.pem \
     --no-proxy-headers \
     --no-server-header \
     --no-date-header
